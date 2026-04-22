@@ -676,81 +676,118 @@ input[type="range"]::-webkit-slider-thumb:hover {
   color: var(--text-primary);
 }
 
-/* ── Active devices — mobile card layout ── */
+/* ── Active devices — dual layout ── */
 .device-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.device-table-desktop { display: block; }
+.device-cards-mobile  { display: none; }
 
 @media (max-width: 640px) {
-  /* Stack table as cards — each tr becomes a card */
-  .device-table-wrap table { display: block; }
-  .device-table-wrap thead { display: none; }
-  .device-table-wrap tbody { display: flex; flex-direction: column; gap: 10px; }
+  .device-table-desktop { display: none; }
+  .device-cards-mobile  { display: block; }
+}
+
+@media (max-width: 640px) {
+  .device-table-wrap table,
+  .device-table-wrap thead,
+  .device-table-wrap tbody,
   .device-table-wrap tfoot { display: block; }
 
+  .device-table-wrap thead { display: none; }
+  .device-table-wrap tbody { display: flex; flex-direction: column; gap: 10px; }
+
+  /* Each row = card with 2 rows: [name | role] then [w | qty | h | kwh | ×] */
   .device-table-wrap tbody tr {
     display: grid;
     grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto auto;
-    gap: 8px;
+    grid-template-rows: auto auto;
+    gap: 10px 8px;
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: 12px;
-    padding: 12px 12px 10px;
+    padding: 14px;
+    align-items: center;
   }
 
-  /* Row 1: name (left) + role badge (right) */
-  .device-table-wrap tbody tr td:nth-child(1) { grid-column:1; grid-row:1; padding:0; }
-  .device-table-wrap tbody tr td:nth-child(2) { grid-column:2; grid-row:1; padding:0; display:flex; align-items:center; }
+  /* Row 1 */
+  .device-table-wrap tbody tr td:nth-child(1) {
+    grid-column: 1; grid-row: 1; padding: 0;
+  }
+  .device-table-wrap tbody tr td:nth-child(2) {
+    grid-column: 2; grid-row: 1; padding: 0;
+    display: flex; align-items: center; justify-content: flex-end;
+  }
 
-  /* Row 2: watts / qty / hours inputs side by side */
-  .device-table-wrap tbody tr td:nth-child(3) { grid-column:1; grid-row:2; padding:0; }
-  .device-table-wrap tbody tr td:nth-child(4) { grid-column:1; grid-row:2; padding:0; }
-  .device-table-wrap tbody tr td:nth-child(5) { grid-column:1; grid-row:2; padding:0; }
-
-  /* Override row 2 — use a flex container trick via pseudo */
+  /* Row 2 — inputs + kWh + delete in one flex row */
   .device-table-wrap tbody tr td:nth-child(3),
   .device-table-wrap tbody tr td:nth-child(4),
-  .device-table-wrap tbody tr td:nth-child(5) {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    grid-column: 1; grid-row: 2;
+  .device-table-wrap tbody tr td:nth-child(5),
+  .device-table-wrap tbody tr td:nth-child(6),
+  .device-table-wrap tbody tr td:nth-child(7) {
+    grid-column: 1 / 3; grid-row: 2; padding: 0;
+    display: flex; align-items: center; gap: 6px;
   }
-  /* Stack them horizontally by making them all sit in row 2 as a sub-flex */
+
+  /* Only show the first cell in row 2 as the flex container */
+  .device-table-wrap tbody tr td:nth-child(4),
+  .device-table-wrap tbody tr td:nth-child(5),
+  .device-table-wrap tbody tr td:nth-child(6),
+  .device-table-wrap tbody tr td:nth-child(7) {
+    display: contents; /* merge into the flow of td:nth-child(3) */
+  }
+
+  /* Re-declare properly using a simpler approach */
   .device-table-wrap tbody tr {
-    /* Re-declare to allow 3 cells to share row 2 */
-    grid-template-columns: auto auto auto 1fr auto;
+    grid-template-columns: 1fr auto;
     grid-template-rows: auto auto;
+  }
+  .device-table-wrap tbody tr td:nth-child(1) { grid-area: 1 / 1 / 2 / 2; padding:0; }
+  .device-table-wrap tbody tr td:nth-child(2) { grid-area: 1 / 2 / 2 / 3; padding:0; justify-self:end; }
+  .device-table-wrap tbody tr td:nth-child(3) { grid-area: 2 / 1 / 3 / 3; padding:0; display:flex; align-items:center; gap:8px; flex-wrap:nowrap; }
+  .device-table-wrap tbody tr td:nth-child(4),
+  .device-table-wrap tbody tr td:nth-child(5),
+  .device-table-wrap tbody tr td:nth-child(6),
+  .device-table-wrap tbody tr td:nth-child(7) { display: none; }
+
+  /* Since display:contents doesn't work cleanly across browsers,
+     use React-rendered inline structure instead — CSS targets .device-row2 */
+  .device-row2 {
+    grid-area: 2 / 1 / 3 / 3;
+    display: flex;
     align-items: center;
-    gap: 6px 8px;
+    gap: 8px;
+    flex-wrap: nowrap;
   }
-  .device-table-wrap tbody tr td:nth-child(1) { grid-column:1/5; grid-row:1; }
-  .device-table-wrap tbody tr td:nth-child(2) { grid-column:5;   grid-row:1; }
-  .device-table-wrap tbody tr td:nth-child(3) { grid-column:1;   grid-row:2; padding:0; }
-  .device-table-wrap tbody tr td:nth-child(4) { grid-column:2;   grid-row:2; padding:0; }
-  .device-table-wrap tbody tr td:nth-child(5) { grid-column:3;   grid-row:2; padding:0; }
-  .device-table-wrap tbody tr td:nth-child(6) { grid-column:4;   grid-row:2; padding:0; text-align:right; font-size:12px; }
-  .device-table-wrap tbody tr td:nth-child(7) { grid-column:5;   grid-row:2; padding:0; }
-
-  .device-table-wrap tbody tr td input[type="number"] {
-    width: 58px; text-align: center; padding: 5px 4px;
-  }
-  .device-table-wrap tbody tr td input[type="text"] {
-    font-size: 14px; font-weight: 600;
-  }
-
-  /* data-label pseudo-labels above inputs */
-  .device-table-wrap tbody tr td[data-label]::before {
-    content: attr(data-label);
-    display: block;
+  .device-row2-label {
     font-family: var(--font-mono);
     font-size: 9px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
     color: var(--text-tertiary);
-    margin-bottom: 2px;
+    white-space: nowrap;
+  }
+  .device-row2 input[type="number"] {
+    min-width: 56px;
+    width: 56px;
+    padding: 6px 4px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .device-row2-kwh {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    flex: 1;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .device-table-wrap tbody tr td input[type="text"] {
+    font-size: 15px;
+    font-weight: 600;
+    min-width: 0;
   }
 
-  /* Footer total */
+  /* Footer */
   .device-table-wrap tfoot tr {
     display: flex; justify-content: space-between; align-items: center;
     background: var(--bg-elevated);
@@ -1677,52 +1714,77 @@ function AnimatedDiagram({ config, metrics }) {
 
 function drawDiagram(ctx, width, height, time, config, metrics) {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  
-  // Clear canvas
   ctx.clearRect(0, 0, width, height);
-  
-  // Define component positions
-  const solarY = 80;
-  const inverterY = 250;
-  const batteryX = width - 180;
-  const batteryY = 250;
-  const gridX = 80;
-  const gridY = 250;
-  const loadY = 420;
-  const centerX = width / 2;
-  
-  // Draw connections with animated flow
+
+  const mobile = width < 420;
   const flowPhase = (time % 2) / 2;
-  
-  // Solar to Inverter
-  drawAnimatedLine(ctx, centerX, solarY + 40, centerX, inverterY - 40, '#FF9500', flowPhase, metrics.solarHarvest > 0);
-  
-  // Grid to Inverter
-  if (config.gridHours > 0) {
-    drawAnimatedLine(ctx, gridX + 60, gridY, centerX - 90, inverterY, '#0A84FF', flowPhase, true);
+  const cx = width / 2;
+
+  if (mobile) {
+    // ── Vertical stack layout for narrow screens ──
+    const nodeW = Math.min(width * 0.55, 160);
+    const nodeH = 56;
+    const pad   = 28; // vertical gap between nodes
+    const x0    = cx - nodeW / 2;
+
+    const sY  = 20;
+    const iY  = sY  + nodeH + pad;
+    const bY  = iY  + nodeH + pad;
+    const lY  = bY  + nodeH + pad;
+
+    // Lines
+    drawAnimatedLine(ctx, cx, sY + nodeH, cx, iY, '#FF9500', flowPhase, metrics.solarHarvest > 0);
+    drawAnimatedLine(ctx, cx, iY + nodeH, cx, bY, '#BF5AF2', flowPhase, metrics.batteryCharge > 0);
+    drawAnimatedLine(ctx, cx, bY + nodeH, cx, lY, '#30D158', flowPhase, true);
+
+    // Nodes
+    drawSolarPanel(ctx, x0, sY, nodeW, nodeH, config.panelCount, isDark);
+    drawInverter(ctx, x0, iY, nodeW, nodeH, getInverterInfo(config).primary, isDark);
+    drawBattery(ctx, x0, bY, nodeW, nodeH, metrics.batteryCapacity, isDark);
+    drawLoad(ctx, x0, lY, nodeW, nodeH, metrics.peakLoad, isDark);
+
+    // Labels right of nodes
+    const lx = x0 + nodeW + 8;
+    ctx.font = '500 9px Space Mono';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#FF9500';
+    ctx.fillText(`${metrics.solarHarvest.toFixed(1)} kWh/d`, lx, sY + nodeH / 2 + 4);
+    ctx.fillStyle = '#BF5AF2';
+    ctx.fillText(`${metrics.batteryCapacity.toFixed ? metrics.batteryCapacity.toFixed(1) : metrics.batteryCapacity} kWh`, lx, bY + nodeH / 2 + 4);
+    ctx.fillStyle = '#30D158';
+    ctx.fillText(`${metrics.dailyConsumption.toFixed(1)} kWh/d`, lx, lY + nodeH / 2 + 4);
+
+  } else {
+    // ── Horizontal layout for wider screens ──
+    const scale    = Math.min(1, width / 600);
+    const solarY   = 80;
+    const invY     = 250;
+    const battX    = width - Math.round(180 * scale);
+    const battY    = 250;
+    const gridX    = Math.round(80 * scale);
+    const gridY    = 250;
+    const loadY    = 420;
+    const invHalf  = Math.round(90 * scale);
+
+    drawAnimatedLine(ctx, cx, solarY + 40, cx, invY - 40, '#FF9500', flowPhase, metrics.solarHarvest > 0);
+    if (config.gridHours > 0) {
+      drawAnimatedLine(ctx, gridX + 60, gridY, cx - invHalf, invY, '#0A84FF', flowPhase, true);
+    }
+    drawAnimatedLine(ctx, cx + invHalf, invY, battX - 60, battY, '#BF5AF2', flowPhase, metrics.batteryCharge > 0);
+    drawAnimatedLine(ctx, cx, invY + 40, cx, loadY - 40, '#30D158', flowPhase, true);
+
+    drawSolarPanel(ctx, cx - 60, solarY - 40, 120, 80, config.panelCount, isDark);
+    drawInverter(ctx, cx - invHalf, invY - 40, invHalf * 2, 80, getInverterInfo(config).primary, isDark);
+    drawBattery(ctx, battX - 60, battY - 40, 120, 80, metrics.batteryCapacity, isDark);
+    if (config.gridHours > 0) {
+      drawGrid(ctx, gridX - 60, gridY - 40, 120, 80, isDark);
+    }
+    drawLoad(ctx, cx - 80, loadY - 40, 160, 80, metrics.peakLoad, isDark);
+
+    drawLabel(ctx, cx, solarY - 50, `${metrics.solarHarvest.toFixed(1)} kWh/day`, '#FF9500', isDark);
+    drawLabel(ctx, battX, battY - 50, `${metrics.batteryCapacity.toFixed ? metrics.batteryCapacity.toFixed(1) : metrics.batteryCapacity} kWh`, '#BF5AF2', isDark);
+    drawLabel(ctx, cx, loadY + 70, `${metrics.dailyConsumption.toFixed(1)} kWh/day`, '#30D158', isDark);
   }
-  
-  // Inverter to Battery
-  drawAnimatedLine(ctx, centerX + 90, inverterY, batteryX - 60, batteryY, '#BF5AF2', flowPhase, metrics.batteryCharge > 0);
-  
-  // Inverter to Load
-  drawAnimatedLine(ctx, centerX, inverterY + 40, centerX, loadY - 40, '#30D158', flowPhase, true);
-  
-  // Draw components
-  drawSolarPanel(ctx, centerX - 60, solarY - 40, 120, 80, config.panelCount, isDark);
-  drawInverter(ctx, centerX - 90, inverterY - 40, 180, 80, getInverterInfo(config).primary, isDark);
-  drawBattery(ctx, batteryX - 60, batteryY - 40, 120, 80, metrics.batteryCapacity, isDark);
-  
-  if (config.gridHours > 0) {
-    drawGrid(ctx, gridX - 60, gridY - 40, 120, 80, isDark);
-  }
-  
-  drawLoad(ctx, centerX - 80, loadY - 40, 160, 80, metrics.peakLoad, isDark);
-  
-  // Draw labels with animated values
-  drawLabel(ctx, centerX, solarY - 50, `${metrics.solarHarvest.toFixed(1)} kWh/day`, '#FF9500', isDark);
-  drawLabel(ctx, batteryX, batteryY - 50, `${metrics.batteryCapacity} kWh`, '#BF5AF2', isDark);
-  drawLabel(ctx, centerX, loadY + 70, `${metrics.dailyConsumption.toFixed(1)} kWh/day`, '#30D158', isDark);
 }
 
 function drawAnimatedLine(ctx, x1, y1, x2, y2, color, phase, active) {
@@ -1892,7 +1954,9 @@ function WireLegend() {
   ];
   return (
     <div style={{
-      display: 'flex', gap: '24px', flexWrap: 'wrap',
+      display: 'grid',
+      gridTemplateColumns: 'repeat(2, 1fr)',
+      gap: '8px 16px',
       padding: '12px 16px',
       background: 'var(--bg-elevated)',
       border: '1px solid var(--border-subtle)',
@@ -1901,14 +1965,14 @@ function WireLegend() {
     }}>
       {items.map(({ color, dash, label }) => (
         <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <svg width="36" height="10" viewBox="0 0 36 10">
+          <svg width="28" height="10" viewBox="0 0 28 10" style={{ flexShrink: 0 }}>
             <line
-              x1="0" y1="5" x2="36" y2="5"
+              x1="0" y1="5" x2="28" y2="5"
               stroke={color} strokeWidth="2.5"
               strokeDasharray={dash ? '6 4' : 'none'}
             />
           </svg>
-          <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', letterSpacing: '0.3px' }}>
+          <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', letterSpacing: '0.3px', lineHeight: 1.3 }}>
             {label}
           </span>
         </div>
@@ -2379,117 +2443,116 @@ function LoadSection({ devices, setDevices, viewMode }) {
         </div>
       </div>
 
-      {/* ── Active Devices Table ── */}
+      {/* ── Active Devices ── */}
       {devices.length > 0 && (
         <div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-tertiary)', marginBottom: '12px' }}>
             Active devices — {devices.length} selected
           </div>
 
-          <div className="device-table-wrap">
+          {/* Desktop table */}
+          <div className="device-table-desktop">
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <colgroup>
-                <col style={{ width: '32%' }} />
-                <col style={{ width: '10%' }} />
-                <col style={{ width: '13%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '12%' }} />
+                <col style={{ width: '32%' }} /><col style={{ width: '10%' }} />
+                <col style={{ width: '13%' }} /><col style={{ width: '9%' }} />
+                <col style={{ width: '12%' }} /><col style={{ width: '12%' }} />
                 <col style={{ width: '7%' }} />
               </colgroup>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border-moderate)' }}>
-                  <th style={{ ...colStyle('left') }}>Device</th>
-                  <th style={{ ...colStyle('center') }}>Role</th>
-                  <th style={{ ...colStyle('right') }}>Watts</th>
-                  <th style={{ ...colStyle('right') }}>Qty</th>
-                  <th style={{ ...colStyle('right') }}>Hrs / day</th>
-                  <th style={{ ...colStyle('right') }}>kWh / day</th>
-                  <th style={{ ...colStyle('center') }}></th>
+                  <th style={colStyle('left')}>Device</th>
+                  <th style={colStyle('center')}>Role</th>
+                  <th style={colStyle('right')}>Watts</th>
+                  <th style={colStyle('right')}>Qty</th>
+                  <th style={colStyle('right')}>Hrs / day</th>
+                  <th style={colStyle('right')}>kWh / day</th>
+                  <th style={colStyle('center')}></th>
                 </tr>
               </thead>
               <tbody>
                 {devices.map((device, idx) => (
                   <tr key={idx} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    {/* Name */}
                     <td style={{ padding: '8px 10px' }}>
-                      <input
-                        type="text"
-                        value={device.name}
+                      <input type="text" value={device.name}
                         onChange={(e) => updateDevice(idx, 'name', e.target.value)}
-                        style={{
-                          width: '100%', padding: '5px 6px', fontSize: '13px',
-                          background: 'transparent', border: '1px solid transparent',
-                          borderRadius: '4px', color: 'var(--text-primary)',
-                          fontFamily: 'var(--font-sans)'
-                        }}
-                        onFocus={e => e.target.style.border = '1px solid var(--border-moderate)'}
-                        onBlur={e => e.target.style.border = '1px solid transparent'}
-                      />
+                        style={{ width:'100%', padding:'5px 6px', fontSize:'13px', background:'transparent', border:'1px solid transparent', borderRadius:'4px', color:'var(--text-primary)', fontFamily:'var(--font-sans)' }}
+                        onFocus={e => e.target.style.border='1px solid var(--border-moderate)'}
+                        onBlur={e => e.target.style.border='1px solid transparent'} />
                     </td>
-                    {/* Role */}
-                    <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                      <button
-                        onClick={() => updateDevice(idx, 'essential', !device.essential)}
-                        style={{
-                          padding: '3px 8px', borderRadius: '4px', width: '100%',
-                          border: `1px solid ${device.essential ? 'var(--success)' : 'var(--border-moderate)'}`,
-                          background: device.essential ? 'var(--success-bg)' : 'transparent',
-                          color: device.essential ? 'var(--success)' : 'var(--text-tertiary)',
-                          fontSize: '10px', cursor: 'pointer', fontFamily: 'var(--font-mono)',
-                          letterSpacing: '0.5px'
-                        }}
-                      >
+                    <td style={{ padding:'8px 10px', textAlign:'center' }}>
+                      <button onClick={() => updateDevice(idx,'essential',!device.essential)} style={{ padding:'3px 8px', borderRadius:'4px', width:'100%', border:`1px solid ${device.essential?'var(--success)':'var(--border-moderate)'}`, background:device.essential?'var(--success-bg)':'transparent', color:device.essential?'var(--success)':'var(--text-tertiary)', fontSize:'10px', cursor:'pointer', fontFamily:'var(--font-mono)', letterSpacing:'0.5px' }}>
                         {device.essential ? 'CORE' : 'OPT'}
                       </button>
                     </td>
-                    {/* Watts */}
-                    <td data-label="W" style={{ padding: '8px 10px' }}>
-                      <input type="number" value={device.watts}
-                        onChange={(e) => updateDevice(idx, 'watts', Number(e.target.value))}
-                        style={inputStyle({})} />
+                    <td style={{ padding:'8px 10px' }}><input type="number" value={device.watts} onChange={(e) => updateDevice(idx,'watts',Number(e.target.value))} style={inputStyle({})} /></td>
+                    <td style={{ padding:'8px 10px' }}><input type="number" value={device.qty} min="1" onChange={(e) => updateDevice(idx,'qty',Number(e.target.value))} style={inputStyle({})} /></td>
+                    <td style={{ padding:'8px 10px' }}><input type="number" value={device.hours} step="0.5" min="0" max="24" onChange={(e) => updateDevice(idx,'hours',Number(e.target.value))} style={inputStyle({})} /></td>
+                    <td style={{ padding:'8px 10px', textAlign:'right', fontFamily:'var(--font-mono)', fontSize:'13px', color:'var(--text-secondary)' }}>
+                      {((device.watts*device.qty*device.hours)/1000).toFixed(2)}
                     </td>
-                    {/* Qty */}
-                    <td data-label="Qty" style={{ padding: '8px 10px' }}>
-                      <input type="number" value={device.qty} min="1"
-                        onChange={(e) => updateDevice(idx, 'qty', Number(e.target.value))}
-                        style={inputStyle({})} />
-                    </td>
-                    {/* Hours */}
-                    <td data-label="h/day" style={{ padding: '8px 10px' }}>
-                      <input type="number" value={device.hours} step="0.5" min="0" max="24"
-                        onChange={(e) => updateDevice(idx, 'hours', Number(e.target.value))}
-                        style={inputStyle({})} />
-                    </td>
-                    {/* kWh */}
-                    <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                      <span style={{ fontSize:'9px', color:'var(--text-tertiary)', marginRight:'3px', fontFamily:'var(--font-mono)', textTransform:'uppercase' }}>kWh</span>
-                      {((device.watts * device.qty * device.hours) / 1000).toFixed(2)}
-                    </td>
-                    {/* Delete */}
-                    <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                      <button onClick={() => removeDevice(idx)} style={{
-                        width: '26px', height: '26px', borderRadius: '6px',
-                        border: '1px solid var(--border-moderate)',
-                        background: 'transparent', color: 'var(--error)',
-                        cursor: 'pointer', fontSize: '14px'
-                      }}>×</button>
+                    <td style={{ padding:'8px 10px', textAlign:'center' }}>
+                      <button onClick={() => removeDevice(idx)} style={{ width:'26px', height:'26px', borderRadius:'6px', border:'1px solid var(--border-moderate)', background:'transparent', color:'var(--error)', cursor:'pointer', fontSize:'14px' }}>×</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
-                <tr style={{ borderTop: '2px solid var(--border-moderate)' }}>
-                  <td colSpan="5" style={{ padding: '10px 10px', fontFamily: 'var(--font-mono)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-tertiary)' }}>
-                    Total daily consumption
-                  </td>
-                  <td style={{ padding: '10px 10px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: '15px', fontWeight: '700', color: 'var(--text-primary)' }}>
-                    {totalDailyKwh.toFixed(2)} kWh
-                  </td>
+                <tr style={{ borderTop:'2px solid var(--border-moderate)' }}>
+                  <td colSpan="5" style={{ padding:'10px', fontFamily:'var(--font-mono)', fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.8px', color:'var(--text-tertiary)' }}>Total daily consumption</td>
+                  <td style={{ padding:'10px', textAlign:'right', fontFamily:'var(--font-mono)', fontSize:'15px', fontWeight:'700', color:'var(--text-primary)' }}>{totalDailyKwh.toFixed(2)} kWh</td>
                   <td></td>
                 </tr>
               </tfoot>
             </table>
+          </div>
+
+          {/* Mobile card stack */}
+          <div className="device-cards-mobile">
+            {devices.map((device, idx) => {
+              const kwh = ((device.watts * device.qty * device.hours) / 1000).toFixed(2);
+              return (
+                <div key={idx} style={{ background:'var(--bg-card)', border:'1px solid var(--border-subtle)', borderRadius:'14px', padding:'14px', marginBottom:'10px' }}>
+                  {/* Row 1: name + role + delete */}
+                  <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'12px' }}>
+                    <input type="text" value={device.name}
+                      onChange={(e) => updateDevice(idx,'name',e.target.value)}
+                      style={{ flex:1, fontSize:'15px', fontWeight:'600', background:'transparent', border:'none', color:'var(--text-primary)', fontFamily:'var(--font-sans)', minWidth:0, padding:'2px 0' }} />
+                    <button onClick={() => updateDevice(idx,'essential',!device.essential)} style={{ padding:'4px 10px', borderRadius:'6px', flexShrink:0, border:`1px solid ${device.essential?'var(--success)':'var(--border-moderate)'}`, background:device.essential?'var(--success-bg)':'transparent', color:device.essential?'var(--success)':'var(--text-tertiary)', fontSize:'10px', cursor:'pointer', fontFamily:'var(--font-mono)', letterSpacing:'0.5px' }}>
+                      {device.essential ? 'CORE' : 'OPT'}
+                    </button>
+                    <button onClick={() => removeDevice(idx)} style={{ width:'28px', height:'28px', borderRadius:'8px', border:'1px solid var(--border-moderate)', background:'transparent', color:'var(--error)', cursor:'pointer', fontSize:'16px', flexShrink:0 }}>×</button>
+                  </div>
+                  {/* Row 2: inputs + kWh result */}
+                  <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'3px' }}>
+                      <span style={{ fontFamily:'var(--font-mono)', fontSize:'9px', textTransform:'uppercase', color:'var(--text-tertiary)', letterSpacing:'0.5px' }}>Watts</span>
+                      <input type="number" value={device.watts} onChange={(e) => updateDevice(idx,'watts',Number(e.target.value))}
+                        style={{ width:'70px', padding:'7px 6px', textAlign:'center', fontSize:'14px', fontFamily:'var(--font-mono)', background:'var(--bg-input)', border:'1px solid var(--border-subtle)', borderRadius:'8px', color:'var(--text-primary)' }} />
+                    </div>
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'3px' }}>
+                      <span style={{ fontFamily:'var(--font-mono)', fontSize:'9px', textTransform:'uppercase', color:'var(--text-tertiary)', letterSpacing:'0.5px' }}>Qty</span>
+                      <input type="number" value={device.qty} min="1" onChange={(e) => updateDevice(idx,'qty',Number(e.target.value))}
+                        style={{ width:'60px', padding:'7px 6px', textAlign:'center', fontSize:'14px', fontFamily:'var(--font-mono)', background:'var(--bg-input)', border:'1px solid var(--border-subtle)', borderRadius:'8px', color:'var(--text-primary)' }} />
+                    </div>
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'3px' }}>
+                      <span style={{ fontFamily:'var(--font-mono)', fontSize:'9px', textTransform:'uppercase', color:'var(--text-tertiary)', letterSpacing:'0.5px' }}>Hrs</span>
+                      <input type="number" value={device.hours} step="0.5" min="0" max="24" onChange={(e) => updateDevice(idx,'hours',Number(e.target.value))}
+                        style={{ width:'60px', padding:'7px 6px', textAlign:'center', fontSize:'14px', fontFamily:'var(--font-mono)', background:'var(--bg-input)', border:'1px solid var(--border-subtle)', borderRadius:'8px', color:'var(--text-primary)' }} />
+                    </div>
+                    <div style={{ flex:1, textAlign:'right' }}>
+                      <div style={{ fontFamily:'var(--font-mono)', fontSize:'9px', textTransform:'uppercase', color:'var(--text-tertiary)', letterSpacing:'0.5px', marginBottom:'3px' }}>kWh/day</div>
+                      <div style={{ fontFamily:'var(--font-mono)', fontSize:'18px', fontWeight:'700', color:'var(--text-secondary)' }}>{kwh}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {/* Mobile total */}
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 14px', background:'var(--bg-elevated)', border:'1px solid var(--border-moderate)', borderRadius:'10px', marginTop:'4px' }}>
+              <span style={{ fontFamily:'var(--font-mono)', fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.8px', color:'var(--text-tertiary)' }}>Total daily</span>
+              <span style={{ fontFamily:'var(--font-mono)', fontSize:'16px', fontWeight:'700', color:'var(--text-primary)' }}>{totalDailyKwh.toFixed(2)} kWh</span>
+            </div>
           </div>
         </div>
       )}

@@ -840,8 +840,17 @@ const BATTERY_CATALOG = [
 ];
 
 // Helper: get selected battery object
-function getSelectedBattery(config) {
-  return BATTERY_CATALOG.find(b => b.id === config.selectedBatteryId) || BATTERY_CATALOG.find(b => b.id === 'derly-14');
+function getBatteryInfo(config) {
+  const slots = config.batterySlots || [{ id: 'derly-14', qty: 1 }];
+  const resolvedSlots = slots.map(sl => ({
+    ...sl,
+    battery: BATTERY_CATALOG.find(b => b.id === sl.id) || BATTERY_CATALOG.find(b => b.id === 'derly-14')
+  }));
+  const totalCapacity = resolvedSlots.reduce((s, sl) => s + sl.battery.kwh * sl.qty, 0);
+  const weightedDod = resolvedSlots.reduce((s, sl) => s + (sl.battery.dod * sl.battery.kwh * sl.qty), 0) / (totalCapacity || 1);
+  const usableCapacity = totalCapacity * (weightedDod / 100);
+  const primary = resolvedSlots[0].battery;
+  return { slots: resolvedSlots, totalCapacity, usableCapacity, weightedDod, primary };
 }
 
 // Helper: aggregate inverter slot metrics
@@ -956,8 +965,7 @@ function App() {
     panelWatts: 550,
     panelCount: 5,
     stringConfig: 'mixed',
-    selectedBatteryId: 'derly-14',
-    batteryQty: 1,
+    batterySlots: [{ id: 'derly-14', qty: 1 }],
     sunHours: 4,
     lossFactor: 0.7,
     diversityFactor: 0.6,
@@ -1167,25 +1175,7 @@ function ConfigurationSection({ config, setConfig, spacing }) {
           </select>
         </div>
 
-        <div className="card">
-          <div className="card-label">Battery Quantity</div>
-          <div className="qty-controls">
-            <button 
-              className="qty-btn"
-              onClick={() => updateConfig('batteryQty', Math.max(1, config.batteryQty - 1))}
-            >
-              −
-            </button>
-            <span className="qty-value">{config.batteryQty}</span>
-            <button 
-              className="qty-btn"
-              onClick={() => updateConfig('batteryQty', Math.min(8, config.batteryQty + 1))}
-            >
-              +
-            </button>
-            <span className="qty-label">= {(getSelectedBattery(config).kwh * config.batteryQty).toFixed(1)} kWh</span>
-          </div>
-        </div>
+
 
         <div className="card">
           <div className="card-label">Peak Sun Hours</div>
@@ -1380,62 +1370,138 @@ const BATTERY_BRANDS = [...new Set(BATTERY_CATALOG.map(b => b.brand))];
 
 function BatterySelector({ config, setConfig }) {
   const [activeBrand, setActiveBrand] = useState('Derly');
-  const selected = getSelectedBattery(config);
+  const { slots, totalCapacity, usableCapacity, weightedDod } = getBatteryInfo(config);
   const filtered = BATTERY_CATALOG.filter(b => b.brand === activeBrand);
+
+  const addSlot = () => {
+    if (slots.length >= 4) return;
+    const usedIds = slots.map(s => s.id);
+    const next = BATTERY_CATALOG.find(b => !usedIds.includes(b.id));
+    if (!next) return;
+    setConfig(prev => ({ ...prev, batterySlots: [...prev.batterySlots, { id: next.id, qty: 1 }] }));
+  };
+
+  const removeSlot = (si) => {
+    if (slots.length <= 1) return;
+    setConfig(prev => ({ ...prev, batterySlots: prev.batterySlots.filter((_, i) => i !== si) }));
+  };
+
+  const changeSlotModel = (si, newId) => {
+    setConfig(prev => ({
+      ...prev,
+      batterySlots: prev.batterySlots.map((sl, i) => i === si ? { ...sl, id: newId } : sl)
+    }));
+  };
+
+  const updateSlotQty = (si, delta) => {
+    setConfig(prev => ({
+      ...prev,
+      batterySlots: prev.batterySlots.map((sl, i) =>
+        i === si ? { ...sl, qty: Math.max(1, Math.min(8, sl.qty + delta)) } : sl
+      )
+    }));
+  };
 
   return (
     <div style={{ marginTop: '32px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
         <div className="card-label" style={{ marginBottom: 0 }}>Battery Selection</div>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-tertiary)' }}>
-          {selected.brand} {selected.model} × {config.batteryQty} = {(selected.kwh * config.batteryQty).toFixed(1)} kWh
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-tertiary)' }}>
+            {totalCapacity.toFixed(1)} kWh total · {usableCapacity.toFixed(1)} kWh usable
+          </span>
+          {slots.length < 4 && (
+            <button onClick={addSlot} style={{
+              padding: '6px 14px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer',
+              border: '1px solid var(--accent-battery)', background: 'var(--accent-battery-glow)',
+              color: 'var(--accent-battery)', fontFamily: 'var(--font-mono)'
+            }}>+ Add Battery</button>
+          )}
+        </div>
       </div>
 
-      {/* Brand tabs */}
-      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
-        {BATTERY_BRANDS.map(brand => (
-          <button key={brand} onClick={() => setActiveBrand(brand)} style={{
-            padding: '5px 13px', borderRadius: '20px', fontSize: '11px', cursor: 'pointer',
-            fontFamily: 'var(--font-mono)', letterSpacing: '0.3px', transition: 'all 0.15s ease',
-            border: `1px solid ${activeBrand === brand ? 'var(--accent-battery)' : 'var(--border-moderate)'}`,
-            background: activeBrand === brand ? 'var(--accent-battery-glow)' : 'transparent',
-            color: activeBrand === brand ? 'var(--accent-battery)' : 'var(--text-tertiary)'
-          }}>{brand}</button>
-        ))}
-      </div>
-
-      {/* Battery cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px', marginBottom: '16px' }}>
-        {filtered.map(bat => {
-          const isSelected = bat.id === config.selectedBatteryId;
-          return (
-            <div key={bat.id} className="card" onClick={() => setConfig(prev => ({ ...prev, selectedBatteryId: bat.id }))} style={{
-              cursor: 'pointer',
-              borderColor: isSelected ? 'var(--accent-battery)' : 'var(--border-subtle)',
-              background: isSelected ? 'var(--accent-battery-glow)' : 'var(--bg-card)'
-            }}>
-              <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '6px', color: isSelected ? 'var(--accent-battery)' : 'var(--text-primary)' }}>
-                {bat.model}
-              </div>
-              <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-tertiary)', lineHeight: '1.8' }}>
-                {bat.kwh} kWh · {bat.voltage}V · {bat.ah}Ah<br/>
-                {bat.chemistry} · {bat.cycles.toLocaleString()} cycles<br/>
-                DoD: {bat.dod}% · Max charge: {bat.maxChargeA}A<br/>
-                <span style={{ color: 'var(--accent-solar)' }}>₦{bat.cost.toLocaleString()}</span>
-              </div>
+      {slots.map((sl, si) => {
+        const bat = sl.battery;
+        const usedIds = slots.filter((_, i) => i !== si).map(s => s.id);
+        return (
+          <div key={si} style={{
+            marginBottom: '16px', padding: '16px',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-moderate)',
+            borderRadius: '14px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-tertiary)' }}>
+                Slot {si + 1} — {bat.brand} {bat.model} × {sl.qty} = {(bat.kwh * sl.qty).toFixed(1)} kWh
+              </span>
+              {slots.length > 1 && (
+                <button onClick={() => removeSlot(si)} style={{
+                  background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: '18px', lineHeight: 1
+                }}>×</button>
+              )}
             </div>
-          );
-        })}
-      </div>
 
-      {/* Qty control */}
-      <div className="qty-controls">
-        <span className="qty-label">Quantity:</span>
-        <button className="qty-btn" onClick={() => setConfig(prev => ({ ...prev, batteryQty: Math.max(1, prev.batteryQty - 1) }))}>−</button>
-        <span className="qty-value">{config.batteryQty}</span>
-        <button className="qty-btn" onClick={() => setConfig(prev => ({ ...prev, batteryQty: Math.min(8, prev.batteryQty + 1) }))}>+</button>
-        <span className="qty-label">= {(selected.kwh * config.batteryQty).toFixed(1)} kWh · usable {(selected.kwh * config.batteryQty * selected.dod / 100).toFixed(1)} kWh</span>
+            {/* Brand tabs per slot */}
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}>
+              {BATTERY_BRANDS.map(brand => {
+                const isActive = bat.brand === brand;
+                return (
+                  <button key={brand} onClick={() => {
+                    const firstOfBrand = BATTERY_CATALOG.find(b => b.brand === brand && !usedIds.includes(b.id));
+                    if (firstOfBrand) changeSlotModel(si, firstOfBrand.id);
+                  }} style={{
+                    padding: '4px 11px', borderRadius: '20px', fontSize: '10px', cursor: 'pointer',
+                    fontFamily: 'var(--font-mono)', letterSpacing: '0.3px', transition: 'all 0.15s ease',
+                    border: `1px solid ${isActive ? 'var(--accent-battery)' : 'var(--border-moderate)'}`,
+                    background: isActive ? 'var(--accent-battery-glow)' : 'transparent',
+                    color: isActive ? 'var(--accent-battery)' : 'var(--text-tertiary)'
+                  }}>{brand}</button>
+                );
+              })}
+            </div>
+
+            {/* Model cards for active brand */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px', marginBottom: '12px' }}>
+              {BATTERY_CATALOG.filter(b => b.brand === bat.brand).map(b => {
+                const isChosen = b.id === sl.id;
+                const takenByOther = usedIds.includes(b.id);
+                return (
+                  <div key={b.id} className="card"
+                    onClick={() => !takenByOther && changeSlotModel(si, b.id)}
+                    style={{
+                      cursor: takenByOther ? 'not-allowed' : 'pointer',
+                      opacity: takenByOther ? 0.4 : 1,
+                      padding: '12px',
+                      borderColor: isChosen ? 'var(--accent-battery)' : 'var(--border-subtle)',
+                      background: isChosen ? 'var(--accent-battery-glow)' : 'var(--bg-card)'
+                    }}>
+                    <div style={{ fontWeight: 600, fontSize: '12px', marginBottom: '5px', color: isChosen ? 'var(--accent-battery)' : 'var(--text-primary)' }}>
+                      {b.model}
+                    </div>
+                    <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text-tertiary)', lineHeight: '1.7' }}>
+                      {b.kwh} kWh · {b.voltage}V · {b.ah}Ah<br/>
+                      {b.chemistry} · {b.cycles.toLocaleString()} cycles<br/>
+                      DoD: {b.dod}% · {b.maxChargeA}A max
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Qty per slot */}
+            <div className="qty-controls">
+              <span className="qty-label">Qty:</span>
+              <button className="qty-btn" onClick={() => updateSlotQty(si, -1)}>−</button>
+              <span className="qty-value">{sl.qty}</span>
+              <button className="qty-btn" onClick={() => updateSlotQty(si, 1)}>+</button>
+              <span className="qty-label">= {(bat.kwh * sl.qty).toFixed(1)} kWh · usable {(bat.kwh * sl.qty * bat.dod / 100).toFixed(1)} kWh</span>
+            </div>
+          </div>
+        );
+      })}
+
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-tertiary)', paddingTop: '4px' }}>
+        Combined: {totalCapacity.toFixed(1)} kWh total · {usableCapacity.toFixed(1)} kWh usable ({weightedDod.toFixed(0)}% avg DoD)
       </div>
     </div>
   );
@@ -1789,12 +1855,11 @@ function SpecAnnotationCard({ title, accentColor, items, style }) {
 
 function StaticDiagram({ config, metrics }) {
   const { primary: inverter, totalKVA } = getInverterInfo(config);
-  const battery = getSelectedBattery(config);
+  const { totalCapacity: batteryCapacity, usableCapacity: bUsable, primary: battery } = getBatteryInfo(config);
   const panelSpec = PANEL_SPECS[config.panelWatts];
   const totalPVWatts = config.panelWatts * config.panelCount;
   const totalVOC = panelSpec.voc * config.panelCount;
   const totalISC = panelSpec.isc;
-  const batteryCapacity = battery.kwh * config.batteryQty;
 
   return (
     <div style={{ position: 'relative' }}>
@@ -1888,7 +1953,7 @@ function StaticDiagram({ config, metrics }) {
               {batteryCapacity} kWh total
             </text>
             <text x="775" y="278" textAnchor="middle" fontSize="10" fill="var(--text-secondary)">
-              {config.batteryQty} × {battery.kwh} kWh
+              {batteryCapacity.toFixed(1)} kWh bank
             </text>
             <text x="775" y="293" textAnchor="middle" fontSize="9" fill="var(--text-tertiary)">
               Autonomy: ~{metrics.autonomyHours}h
@@ -1974,10 +2039,9 @@ function StaticDiagram({ config, metrics }) {
 
 function SystemComponentCards({ config, metrics }) {
   const { primary: inverter, totalKVA, slots } = getInverterInfo(config);
-  const battery = getSelectedBattery(config);
+  const { totalCapacity: batteryCapacity, usableCapacity, weightedDod, slots: battSlots, primary: battery } = getBatteryInfo(config);
   const panelSpec = PANEL_SPECS[config.panelWatts];
   const totalPVWatts = config.panelWatts * config.panelCount;
-  const batteryCapacity = battery.kwh * config.batteryQty;
 
   const cards = [
     {
@@ -2006,10 +2070,9 @@ function SystemComponentCards({ config, metrics }) {
       title: 'Battery Storage',
       color: '#BF5AF2',
       items: [
-        `${config.batteryQty} × ${battery.kwh} kWh`,
-        `Total: ${batteryCapacity.toFixed(1)} kWh`,
-        `${battery.chemistry}`,
-        `${battery.voltage}V · ${battery.dod}% DoD`,
+        battSlots.map(sl => `${sl.qty} × ${sl.battery.model} (${(sl.battery.kwh*sl.qty).toFixed(1)} kWh)`).join(' + '),
+        `Total: ${batteryCapacity.toFixed(1)} kWh · Usable: ${usableCapacity.toFixed(1)} kWh`,
+        `${battery.chemistry} · ${weightedDod.toFixed(0)}% avg DoD`,
         `Autonomy: ~${metrics.autonomyHours}h`,
       ]
     },
@@ -2382,7 +2445,7 @@ function StatCard({ label, value, subtitle, meaning, accent }) {
 
 function SummarySection({ metrics, config, viewMode }) {
   const { totalKVA, totalChargeRate, primary: inverter } = getInverterInfo(config);
-  const battery = getSelectedBattery(config);
+  const { primary: battery } = getBatteryInfo(config);
   const totalInput = metrics.solarHarvest + metrics.gridCharge;
   const inverterCapacity = totalKVA * 1000;
   const loadPct = Math.round((metrics.peakLoad / inverterCapacity) * 100);
@@ -2436,9 +2499,9 @@ function SummarySection({ metrics, config, viewMode }) {
     {
       label: 'Battery Capacity',
       value: `${metrics.batteryCapacity.toFixed(1)} kWh`,
-      subtitle: `${config.batteryQty} × ${battery.kwh} kWh — ${battery.model}`,
+      subtitle: `${metrics.batteryCapacity.toFixed(1)} kWh total · ${metrics.usableCapacity.toFixed(1)} kWh usable`,
       accent: 'accent-battery',
-      meaning: `Your ${metrics.batteryCapacity.toFixed(1)} kWh bank (${metrics.usableCapacity.toFixed(1)} kWh usable at ${battery.dod}% DoD) stores energy for overnight use and cloudy days. At typical load (${Math.round(metrics.typicalPeak)}W), this gives ~${metrics.autonomyHours}h runtime without solar or grid.`
+      meaning: `Your battery bank stores ${metrics.batteryCapacity.toFixed(1)} kWh total (${metrics.usableCapacity.toFixed(1)} kWh usable). At typical load (${Math.round(metrics.typicalPeak)}W), this gives ~${metrics.autonomyHours}h runtime without solar or grid.`
     },
     {
       label: 'Battery Autonomy',
@@ -2944,7 +3007,7 @@ function TweaksPanel({ visible, viewMode, setViewMode, diagramStyle, setDiagramS
 // Helper function to calculate metrics
 function calculateMetrics(config, devices) {
   const { totalKVA, totalMaxPV, totalChargeRate } = getInverterInfo(config);
-  const battery = getSelectedBattery(config);
+  const { totalCapacity: batteryCapacity, usableCapacity, weightedDod, primary: batteryPrimary } = getBatteryInfo(config);
   
   const totalWatts = config.panelWatts * config.panelCount;
   const effectiveWatts = totalWatts * config.lossFactor;
@@ -2952,8 +3015,6 @@ function calculateMetrics(config, devices) {
   
   const gridCharge = config.gridHours * totalChargeRate;
   
-  const batteryCapacity = battery.kwh * config.batteryQty;
-  const usableCapacity  = batteryCapacity * (battery.dod / 100);
   
   const peakLoad = devices.reduce((sum, d) => sum + (d.watts * d.qty), 0);
   const essentialLoad = devices.filter(d => d.essential).reduce((sum, d) => sum + (d.watts * d.qty), 0);

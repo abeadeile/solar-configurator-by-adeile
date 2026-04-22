@@ -485,7 +485,11 @@ input[type="range"]::-webkit-slider-thumb:hover {
   border-radius: 20px;
   padding: 48px;
   position: relative;
-  overflow: hidden;
+  overflow: visible; /* allow SVG scroll wrapper to work */
+}
+
+@media (max-width: 768px) {
+  .diagram-container { padding: 20px 14px; }
 }
 
 .diagram-container::before {
@@ -670,6 +674,93 @@ input[type="range"]::-webkit-slider-thumb:hover {
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+/* ── Active devices — mobile card layout ── */
+.device-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+@media (max-width: 640px) {
+  /* Stack table as cards — each tr becomes a card */
+  .device-table-wrap table { display: block; }
+  .device-table-wrap thead { display: none; }
+  .device-table-wrap tbody { display: flex; flex-direction: column; gap: 10px; }
+  .device-table-wrap tfoot { display: block; }
+
+  .device-table-wrap tbody tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto auto;
+    gap: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 12px 12px 10px;
+  }
+
+  /* Row 1: name (left) + role badge (right) */
+  .device-table-wrap tbody tr td:nth-child(1) { grid-column:1; grid-row:1; padding:0; }
+  .device-table-wrap tbody tr td:nth-child(2) { grid-column:2; grid-row:1; padding:0; display:flex; align-items:center; }
+
+  /* Row 2: watts / qty / hours inputs side by side */
+  .device-table-wrap tbody tr td:nth-child(3) { grid-column:1; grid-row:2; padding:0; }
+  .device-table-wrap tbody tr td:nth-child(4) { grid-column:1; grid-row:2; padding:0; }
+  .device-table-wrap tbody tr td:nth-child(5) { grid-column:1; grid-row:2; padding:0; }
+
+  /* Override row 2 — use a flex container trick via pseudo */
+  .device-table-wrap tbody tr td:nth-child(3),
+  .device-table-wrap tbody tr td:nth-child(4),
+  .device-table-wrap tbody tr td:nth-child(5) {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    grid-column: 1; grid-row: 2;
+  }
+  /* Stack them horizontally by making them all sit in row 2 as a sub-flex */
+  .device-table-wrap tbody tr {
+    /* Re-declare to allow 3 cells to share row 2 */
+    grid-template-columns: auto auto auto 1fr auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 6px 8px;
+  }
+  .device-table-wrap tbody tr td:nth-child(1) { grid-column:1/5; grid-row:1; }
+  .device-table-wrap tbody tr td:nth-child(2) { grid-column:5;   grid-row:1; }
+  .device-table-wrap tbody tr td:nth-child(3) { grid-column:1;   grid-row:2; padding:0; }
+  .device-table-wrap tbody tr td:nth-child(4) { grid-column:2;   grid-row:2; padding:0; }
+  .device-table-wrap tbody tr td:nth-child(5) { grid-column:3;   grid-row:2; padding:0; }
+  .device-table-wrap tbody tr td:nth-child(6) { grid-column:4;   grid-row:2; padding:0; text-align:right; font-size:12px; }
+  .device-table-wrap tbody tr td:nth-child(7) { grid-column:5;   grid-row:2; padding:0; }
+
+  .device-table-wrap tbody tr td input[type="number"] {
+    width: 58px; text-align: center; padding: 5px 4px;
+  }
+  .device-table-wrap tbody tr td input[type="text"] {
+    font-size: 14px; font-weight: 600;
+  }
+
+  /* data-label pseudo-labels above inputs */
+  .device-table-wrap tbody tr td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+    margin-bottom: 2px;
+  }
+
+  /* Footer total */
+  .device-table-wrap tfoot tr {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-moderate);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-top: 4px;
+  }
+  .device-table-wrap tfoot td { padding: 0 !important; border: none !important; }
+  .device-table-wrap tfoot td:nth-child(3) { display: none; }
 }
 
 /* Loading state */
@@ -1532,40 +1623,54 @@ function DiagramSection({ config, metrics, style }) {
 
 function AnimatedDiagram({ config, metrics }) {
   const canvasRef = useRef(null);
-  
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
-    
-    // Animation loop
+
     let animationFrame;
     let time = 0;
-    
+
+    const setup = () => {
+      const dpr  = window.devicePixelRatio || 1;
+      const w    = canvas.parentElement.clientWidth;
+      const h    = Math.max(280, Math.min(500, w * 0.56)); // aspect-ratio aware
+      canvas.style.height = h + 'px';
+      canvas.width  = w * dpr;
+      canvas.height = h * dpr;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      return { ctx, w, h };
+    };
+
+    let { ctx, w, h } = setup();
+
     const animate = () => {
       time += 0.02;
-      drawDiagram(ctx, rect.width, rect.height, time, config, metrics);
+      drawDiagram(ctx, w, h, time, config, metrics);
       animationFrame = requestAnimationFrame(animate);
     };
-    
     animate();
-    
+
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(animationFrame);
+      const res = setup();
+      ctx = res.ctx; w = res.w; h = res.h;
+      time = 0;
+      animate();
+    });
+    ro.observe(canvas.parentElement);
+
     return () => {
-      if (animationFrame) cancelAnimationFrame(animationFrame);
+      cancelAnimationFrame(animationFrame);
+      ro.disconnect();
     };
   }, [config, metrics]);
-  
+
   return (
-    <canvas 
+    <canvas
       ref={canvasRef}
-      style={{ width: '100%', height: '500px', display: 'block' }}
+      style={{ width: '100%', display: 'block' }}
     />
   );
 }
@@ -2281,7 +2386,7 @@ function LoadSection({ devices, setDevices, viewMode }) {
             Active devices — {devices.length} selected
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
+          <div className="device-table-wrap">
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <colgroup>
                 <col style={{ width: '32%' }} />
@@ -2306,6 +2411,7 @@ function LoadSection({ devices, setDevices, viewMode }) {
               <tbody>
                 {devices.map((device, idx) => (
                   <tr key={idx} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                    {/* Name */}
                     <td style={{ padding: '8px 10px' }}>
                       <input
                         type="text"
@@ -2321,6 +2427,7 @@ function LoadSection({ devices, setDevices, viewMode }) {
                         onBlur={e => e.target.style.border = '1px solid transparent'}
                       />
                     </td>
+                    {/* Role */}
                     <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                       <button
                         onClick={() => updateDevice(idx, 'essential', !device.essential)}
@@ -2336,24 +2443,30 @@ function LoadSection({ devices, setDevices, viewMode }) {
                         {device.essential ? 'CORE' : 'OPT'}
                       </button>
                     </td>
-                    <td style={{ padding: '8px 10px' }}>
+                    {/* Watts */}
+                    <td data-label="W" style={{ padding: '8px 10px' }}>
                       <input type="number" value={device.watts}
                         onChange={(e) => updateDevice(idx, 'watts', Number(e.target.value))}
                         style={inputStyle({})} />
                     </td>
-                    <td style={{ padding: '8px 10px' }}>
+                    {/* Qty */}
+                    <td data-label="Qty" style={{ padding: '8px 10px' }}>
                       <input type="number" value={device.qty} min="1"
                         onChange={(e) => updateDevice(idx, 'qty', Number(e.target.value))}
                         style={inputStyle({})} />
                     </td>
-                    <td style={{ padding: '8px 10px' }}>
+                    {/* Hours */}
+                    <td data-label="h/day" style={{ padding: '8px 10px' }}>
                       <input type="number" value={device.hours} step="0.5" min="0" max="24"
                         onChange={(e) => updateDevice(idx, 'hours', Number(e.target.value))}
                         style={inputStyle({})} />
                     </td>
+                    {/* kWh */}
                     <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                      <span style={{ fontSize:'9px', color:'var(--text-tertiary)', marginRight:'3px', fontFamily:'var(--font-mono)', textTransform:'uppercase' }}>kWh</span>
                       {((device.watts * device.qty * device.hours) / 1000).toFixed(2)}
                     </td>
+                    {/* Delete */}
                     <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                       <button onClick={() => removeDevice(idx)} style={{
                         width: '26px', height: '26px', borderRadius: '6px',

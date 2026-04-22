@@ -2736,19 +2736,25 @@ function WeatherDashboard({ config, metrics }) {
 
   useEffect(() => { fetchWeather(coords.lat, coords.lon); }, []);
 
-  // Build enriched day objects — SOC and autonomy tracked cumulatively
+  // Build enriched day objects
+  // startSoc = battery at dawn (before today's sun/load)
+  // endSoc   = battery at dusk (after today's net balance)
+  // autonomyH = how long startSoc alone powers typical load through the night
   const days = (() => {
     if (!weather) return [];
-    let soc = Math.min(metrics.batteryCapacity, metrics.usableCapacity);
+    let soc = metrics.usableCapacity; // assume full at start of forecast
     return weather.time.map((date, i) => {
+      const startSoc     = soc;
       const radiation    = weather.shortwave_radiation_sum[i] || 0;
       const psh          = radiation / 3.6;
       const solarFactor  = Math.min(psh / (CLEAR_SKY_BASELINE / 3.6), 1);
       const dailyHarvest = (config.panelWatts * config.panelCount * psh * config.lossFactor) / 1000;
       const balance      = dailyHarvest + metrics.gridCharge - metrics.dailyConsumption;
       soc = Math.max(0, Math.min(metrics.usableCapacity, soc + balance));
-      const socPct       = metrics.usableCapacity > 0 ? (soc / metrics.usableCapacity) * 100 : 0;
-      const autonomyH    = metrics.typicalPeak > 0 ? Math.round((soc * 1000) / metrics.typicalPeak) : 0;
+      const endSoc       = soc;
+      const socPct       = metrics.usableCapacity > 0 ? (endSoc / metrics.usableCapacity) * 100 : 0;
+      // Autonomy = what you wake up with ÷ typical load (overnight / emergency hours)
+      const autonomyH    = metrics.typicalPeak > 0 ? Math.round((startSoc * 1000) / metrics.typicalPeak) : 0;
       const wmo          = weather.weathercode[i];
       return {
         date, wmo, psh: psh.toFixed(1),
@@ -2756,8 +2762,9 @@ function WeatherDashboard({ config, metrics }) {
         tmax: weather.temperature_2m_max[i],
         tmin: weather.temperature_2m_min[i],
         rain: weather.precipitation_sum[i],
-        dailyHarvest: dailyHarvest.toFixed(1),
-        balance, autonomyH,
+        dailyHarvest: dailyHarvest.toFixed(2),
+        consumption: metrics.dailyConsumption.toFixed(2),
+        balance, autonomyH, startSoc, endSoc,
       };
     });
   })();
@@ -2846,28 +2853,32 @@ function WeatherDashboard({ config, metrics }) {
                   <div style={{ fontFamily:'var(--font-mono)', fontSize:'10px', color:'var(--accent-solar)' }}>
                     ☀️ {d.psh}h
                   </div>
-                  <div style={{ fontFamily:'var(--font-mono)', fontSize:'11px', fontWeight:700,
-                    color: isGood ? 'var(--success)' : 'var(--error)', marginTop:'5px' }}>
-                    {isGood ? '+' : ''}{d.balance.toFixed(1)} kWh
+                  {/* Harvest vs Consumption */}
+                  <div style={{ fontFamily:'var(--font-mono)', fontSize:'10px', color:'var(--accent-solar)', marginTop:'5px' }}>
+                    ↑ {d.dailyHarvest} kWh
                   </div>
-                  <div style={{ fontSize:'9px', color:'var(--text-tertiary)', fontFamily:'var(--font-mono)', marginBottom:'6px' }}>
-                    {d.dailyHarvest} kWh harvest
+                  <div style={{ fontFamily:'var(--font-mono)', fontSize:'10px', color:'var(--text-tertiary)' }}>
+                    ↓ {d.consumption} kWh
+                  </div>
+                  <div style={{ fontFamily:'var(--font-mono)', fontSize:'11px', fontWeight:700,
+                    color: isGood ? 'var(--success)' : 'var(--error)', marginTop:'3px' }}>
+                    {isGood ? '+' : ''}{d.balance.toFixed(1)} net
                   </div>
 
                   {/* Divider */}
                   <div style={{ height:'1px', background:'var(--border-subtle)', margin:'6px 0' }} />
 
-                  {/* Battery autonomy */}
-                  <div style={{ fontSize:'9px', ...labelStyle, marginBottom:'3px' }}>Autonomy</div>
+                  {/* Overnight autonomy — based on dawn SOC */}
+                  <div style={{ fontSize:'9px', ...labelStyle, marginBottom:'3px' }}>Overnight</div>
                   <div style={{ fontFamily:'var(--font-mono)', fontSize:'13px', fontWeight:700, color:socColor }}>
                     {d.autonomyH}h
                   </div>
-                  {/* SOC mini-bar */}
+                  {/* End-of-day SOC bar */}
                   <div style={{ height:'3px', background:'var(--bg-input)', borderRadius:'2px', margin:'4px 0' }}>
                     <div style={{ height:'100%', width:`${Math.min(d.socPct,100)}%`, background:socColor, borderRadius:'2px', transition:'width 0.5s ease' }} />
                   </div>
                   <div style={{ fontSize:'9px', color:'var(--text-disabled)', fontFamily:'var(--font-mono)' }}>
-                    {d.socPct.toFixed(0)}% batt
+                    {d.socPct.toFixed(0)}% end-of-day
                   </div>
                 </div>
               );
@@ -2906,25 +2917,39 @@ function WeatherDashboard({ config, metrics }) {
             </div>
           </div>
 
-          {/* Alert summary */}
+          {/* Alert summary — context-aware */}
           {(() => {
-            const badDays = days.filter(d => d.balance < -1);
-            const critDays = days.filter(d => d.socPct < 30);
-            if (critDays.length > 0) return (
-              <div className="alert error">
-                🔴 {critDays.length} day(s) forecast with battery below 30%. Enable grid charging or reduce load to avoid deep discharge.
-              </div>
-            );
-            if (badDays.length >= 3) return (
-              <div className="alert warning">
-                ⚠️ {badDays.length} deficit days over the next 14 days. Consider enabling grid charging on those days.
-              </div>
-            );
-            const allGood = days.every(d => d.balance >= 0);
+            const deficitDays  = days.filter(d => d.balance < 0);
+            const critDays     = days.filter(d => d.socPct < 30);
+            const emptyDays    = days.filter(d => d.socPct === 0);
+            const avgBalance   = days.reduce((s,d) => s + d.balance, 0) / days.length;
+            const allGood      = days.every(d => d.balance >= 0);
+
+            // Find longest consecutive deficit streak
+            let maxStreak = 0, streak = 0;
+            days.forEach(d => { d.balance < 0 ? (streak++, maxStreak = Math.max(maxStreak, streak)) : (streak = 0); });
+
             if (allGood) return (
-              <div className="alert success">✓ All 14 days forecast in surplus. System well-matched to upcoming weather.</div>
+              <div className="alert success">
+                ✓ All 14 days in surplus. Average net: +{avgBalance.toFixed(1)} kWh/day. Battery stays healthy throughout.
+              </div>
             );
-            return null;
+            if (emptyDays.length > 0) return (
+              <div className="alert error">
+                🔴 Battery hits 0% on {emptyDays.length} day(s). Daily consumption ({days[0]?.consumption} kWh) exceeds solar harvest on deficit days — grid charging or load reduction needed.
+                {maxStreak >= 3 ? ` Longest deficit streak: ${maxStreak} consecutive days.` : ''}
+              </div>
+            );
+            if (critDays.length > 0) return (
+              <div className="alert warning">
+                ⚠️ Battery drops below 30% on {critDays.length} day(s). Avg daily net: {avgBalance.toFixed(1)} kWh. Consider {avgBalance < -2 ? 'adding grid charging hours or more panels' : 'light grid charging on deficit days'}.
+              </div>
+            );
+            return (
+              <div className="alert warning">
+                ⚠️ {deficitDays.length} deficit days in the forecast. Battery will partially drain but won't hit critical levels. Avg net: {avgBalance.toFixed(1)} kWh/day.
+              </div>
+            );
           })()}
 
           {/* Responsive weather grid CSS injected */}

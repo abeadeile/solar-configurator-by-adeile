@@ -874,6 +874,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   border-color: var(--border-strong);
 }
 </style>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='35' fill='%23FF9500'/><g stroke='%23FF9500' stroke-width='8' stroke-linecap='round'><line x1='50' y1='2' x2='50' y2='18'/><line x1='50' y1='82' x2='50' y2='98'/><line x1='2' y1='50' x2='18' y2='50'/><line x1='82' y1='50' x2='98' y2='50'/><line x1='15' y1='15' x2='27' y2='27'/><line x1='73' y1='73' x2='85' y2='85'/><line x1='85' y1='15' x2='73' y2='27'/><line x1='27' y1='73' x2='15' y1='85'/></g></svg>">
 </head>
 <body>
 <div id="root"></div>
@@ -1697,7 +1698,7 @@ function drawDiagram(ctx, width, height, time, config, metrics) {
   const flowPhase = (time % 2) / 2;
   
   // Solar to Inverter - arrow points TO inverter icon, ends BEFORE label text
-  drawAnimatedLine(ctx, solarX, solarY + 50, inverterX, inverterY - 50, '#FF9500', flowPhase, metrics.solarHarvest > 0);
+  drawAnimatedLine(ctx, solarX, solarY + 50, inverterX, inverterY - 50, '#FF9500', flowPhase, metrics.solarHarvest > 0, true);
   
   // Grid to Inverter - arrow points TO inverter icon
   if (config.gridHours > 0) {
@@ -1708,10 +1709,10 @@ function drawDiagram(ctx, width, height, time, config, metrics) {
   drawAnimatedLine(ctx, inverterX + 55, inverterY, batteryX - 40, batteryY, '#BF5AF2', flowPhase, metrics.batteryCharge > 0, true);
   
   // Inverter to Load - arrow points TO load icon, ends BEFORE label text
-  drawAnimatedLine(ctx, inverterX, inverterY + 50, loadX, loadY - 50, '#30D158', flowPhase, true);
+  drawAnimatedLine(ctx, inverterX, inverterY + 50, loadX, loadY - 50, '#30D158', flowPhase, true, true);
   
   // Draw component icons with labels
-  const batteryLevel = Math.min(1, Math.max(0, (metrics.solarHarvest + metrics.gridCharge - metrics.dailyConsumption) / metrics.dailyConsumption));
+  const batteryLevel = metrics.usableCapacity > 0 ? Math.min(1, metrics.usableCapacity / metrics.batteryCapacity) : 0;
   
   drawSolarPanelIcon(ctx, solarX, solarY, isDark);
   drawComponentLabel(ctx, solarX, solarY + 50, 'Solar Panels', `${config.panelCount} × ${config.panelWatts}W`, `${metrics.solarHarvest.toFixed(1)} kWh/day`, '#FF9500', isDark);
@@ -1930,6 +1931,12 @@ function drawLoadIcon(ctx, x, y, isDark) {
 }
 
 function drawComponentLabel(ctx, x, y, title, subtitle, detail, color, isDark) {
+  // Draw fully opaque background box to hide lines completely
+  ctx.fillStyle = isDark ? 'rgba(25, 25, 35, 0.05)' : 'rgba(245, 245, 250, 0.05)';
+  ctx.beginPath();
+  ctx.roundRect(x - 55, y - 5, 110, 50, 8);
+  ctx.fill();
+  
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   

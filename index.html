@@ -2021,55 +2021,88 @@ function drawDiagram(ctx, width, height, time, config, metrics) {
   // Clear canvas
   ctx.clearRect(0, 0, width, height);
   
-  // Define component positions - EXPANDED layout to prevent text overlap
-  const solarX = width / 2;
-  const solarY = 80;
-  const inverterX = width / 2;
-  const inverterY = 280;  // Increased from 240
-  const batteryX = width - 140;
-  const batteryY = 280;  // Increased from 240
-  const gridX = 100;
-  const gridY = 280;  // Increased from 240
-  const loadX = width / 2;
-  const loadY = 480;  // Increased from 420
-  
-  // Draw connections with animated flow
+  const isMobile = width < 560;
+  const inverterInfo = getInverterInfo(config);
+  const batteryLevel = metrics.usableCapacity > 0 ? Math.min(1, metrics.usableCapacity / metrics.batteryCapacity) : 0;
   const flowPhase = (time % 2) / 2;
   
-  // Solar to Inverter - arrow points TO inverter icon, ends BEFORE label text
-  drawAnimatedLine(ctx, solarX, solarY + 50, inverterX, inverterY - 50, '#FF9500', flowPhase, metrics.solarHarvest > 0, true);
-  
-  // Grid to Inverter - arrow points TO inverter icon
-  if (config.gridHours > 0) {
-    drawAnimatedLine(ctx, gridX + 40, gridY, inverterX - 55, inverterY, '#0A84FF', flowPhase, true, true);
+  if (isMobile) {
+    // ── MOBILE: Vertical stack layout ──
+    const cx = width / 2;
+    const gap = height / 6;
+    const solarY = gap * 0.8;
+    const gridY = gap * 1.8;
+    const inverterY = gap * 2.8;
+    const batteryY = gap * 3.8;
+    const loadY = gap * 4.8;
+    
+    // Connections
+    drawAnimatedLine(ctx, cx, solarY + 40, cx, gridY - 30, '#FF9500', flowPhase, metrics.solarHarvest > 0, true);
+    if (config.gridHours > 0) {
+      drawAnimatedLine(ctx, cx, gridY + 40, cx, inverterY - 30, '#0A84FF', flowPhase, true, true);
+    } else {
+      drawAnimatedLine(ctx, cx, solarY + 40, cx, inverterY - 30, '#FF9500', flowPhase, metrics.solarHarvest > 0, true);
+    }
+    drawAnimatedLine(ctx, cx, inverterY + 40, cx, batteryY - 30, '#BF5AF2', flowPhase, metrics.batteryCharge > 0, true);
+    drawAnimatedLine(ctx, cx, batteryY + 40, cx, loadY - 30, '#30D158', flowPhase, true, true);
+    
+    // Components - vertically stacked
+    drawSolarPanelIcon(ctx, cx, solarY, isDark);
+    drawComponentLabel(ctx, cx, solarY + 38, 'Solar Panels', `${config.panelCount} × ${config.panelWatts}W`, `${metrics.solarHarvest.toFixed(1)} kWh/day`, '#FF9500', isDark);
+    
+    if (config.gridHours > 0) {
+      drawGridIcon(ctx, cx, gridY, isDark);
+      drawComponentLabel(ctx, cx, gridY + 38, 'Grid', `${config.gridHours}h/day`, `${metrics.gridCharge.toFixed(1)} kWh`, '#0A84FF', isDark);
+    }
+    
+    drawInverterIcon(ctx, cx, inverterY, isDark);
+    drawComponentLabel(ctx, cx, inverterY + 38, 'Inverter', `${inverterInfo.primary.name}`, `${inverterInfo.totalKVA} kVA`, isDark ? '#FFFFFF' : '#000000', isDark);
+    
+    drawBatteryIcon(ctx, cx, batteryY, batteryLevel, isDark);
+    drawComponentLabel(ctx, cx, batteryY + 38, 'Battery', `${metrics.batteryCapacity.toFixed(1)} kWh`, `~${metrics.autonomyHours}h`, '#BF5AF2', isDark);
+    
+    drawLoadIcon(ctx, cx, loadY, isDark);
+    drawComponentLabel(ctx, cx, loadY + 38, 'House Load', `${metrics.peakLoad.toLocaleString()}W`, `${metrics.dailyConsumption.toFixed(1)} kWh/day`, '#30D158', isDark);
+    
+  } else {
+    // ── DESKTOP: Original horizontal layout with better spacing ──
+    const solarX = width / 2;
+    const solarY = 80;
+    const inverterX = width / 2;
+    const inverterY = 300;
+    const batteryX = width - 160;
+    const batteryY = 300;
+    const gridX = 160;
+    const gridY = 300;
+    const loadX = width / 2;
+    const loadY = height - 100;
+    
+    // Connections
+    drawAnimatedLine(ctx, solarX, solarY + 50, inverterX, inverterY - 50, '#FF9500', flowPhase, metrics.solarHarvest > 0, true);
+    if (config.gridHours > 0) {
+      drawAnimatedLine(ctx, gridX + 50, gridY, inverterX - 60, inverterY, '#0A84FF', flowPhase, true, true);
+    }
+    drawAnimatedLine(ctx, inverterX + 60, inverterY, batteryX - 50, batteryY, '#BF5AF2', flowPhase, metrics.batteryCharge > 0, true);
+    drawAnimatedLine(ctx, inverterX, inverterY + 50, loadX, loadY - 50, '#30D158', flowPhase, true, true);
+    
+    // Components
+    drawSolarPanelIcon(ctx, solarX, solarY, isDark);
+    drawComponentLabel(ctx, solarX, solarY + 50, 'Solar Panels', `${config.panelCount} × ${config.panelWatts}W`, `${metrics.solarHarvest.toFixed(1)} kWh/day`, '#FF9500', isDark);
+    
+    drawInverterIcon(ctx, inverterX, inverterY, isDark);
+    drawComponentLabel(ctx, inverterX, inverterY + 50, 'Inverter', `${inverterInfo.primary.kva} kVA`, '', isDark ? '#FFFFFF' : '#000000', isDark);
+    
+    drawBatteryIcon(ctx, batteryX, batteryY, batteryLevel, isDark);
+    drawComponentLabel(ctx, batteryX, batteryY + 50, 'Battery', `${metrics.batteryCapacity.toFixed(1)} kWh`, `~${metrics.autonomyHours}h`, '#BF5AF2', isDark);
+    
+    if (config.gridHours > 0) {
+      drawGridIcon(ctx, gridX, gridY, isDark);
+      drawComponentLabel(ctx, gridX, gridY + 50, 'Grid', `${config.gridHours}h/day`, '', '#0A84FF', isDark);
+    }
+    
+    drawLoadIcon(ctx, loadX, loadY, isDark);
+    drawComponentLabel(ctx, loadX, loadY + 50, 'House Load', `${metrics.peakLoad.toLocaleString()}W`, `${metrics.dailyConsumption.toFixed(1)} kWh/day`, '#30D158', isDark);
   }
-  
-  // Inverter to Battery - arrow points TO battery icon
-  drawAnimatedLine(ctx, inverterX + 55, inverterY, batteryX - 40, batteryY, '#BF5AF2', flowPhase, metrics.batteryCharge > 0, true);
-  
-  // Inverter to Load - arrow points TO load icon, ends BEFORE label text
-  drawAnimatedLine(ctx, inverterX, inverterY + 50, loadX, loadY - 50, '#30D158', flowPhase, true, true);
-  
-  // Draw component icons with labels
-  const batteryLevel = metrics.usableCapacity > 0 ? Math.min(1, metrics.usableCapacity / metrics.batteryCapacity) : 0;
-  
-  drawSolarPanelIcon(ctx, solarX, solarY, isDark);
-  drawComponentLabel(ctx, solarX, solarY + 50, 'Solar Panels', `${config.panelCount} × ${config.panelWatts}W`, `${metrics.solarHarvest.toFixed(1)} kWh/day`, '#FF9500', isDark);
-  
-  drawInverterIcon(ctx, inverterX, inverterY, isDark);
-  const inverterInfo = getInverterInfo(config);
-  drawComponentLabel(ctx, inverterX, inverterY + 50, 'Inverter', `${inverterInfo.primary.kva} kVA`, '', isDark ? '#FFFFFF' : '#000000', isDark);
-  
-  drawBatteryIcon(ctx, batteryX, batteryY, batteryLevel, isDark);
-  drawComponentLabel(ctx, batteryX, batteryY + 50, 'Battery', `${metrics.batteryCapacity.toFixed(1)} kWh`, `~${metrics.autonomyHours}h`, '#BF5AF2', isDark);
-  
-  if (config.gridHours > 0) {
-    drawGridIcon(ctx, gridX, gridY, isDark);
-    drawComponentLabel(ctx, gridX, gridY + 50, 'Grid', `${config.gridHours}h/day`, '', '#0A84FF', isDark);
-  }
-  
-  drawLoadIcon(ctx, loadX, loadY, isDark);
-  drawComponentLabel(ctx, loadX, loadY + 50, 'House Load', `${metrics.peakLoad.toLocaleString()}W`, `${metrics.dailyConsumption.toFixed(1)} kWh/day`, '#30D158', isDark);
 }
 
 function drawAnimatedLine(ctx, x1, y1, x2, y2, color, phase, active, dashed = false) {
@@ -2604,142 +2637,189 @@ function StaticDiagram({ config, metrics }) {
   const totalISC = panelSpec.isc;
   
   const batteryLevel = Math.min(Math.max((metrics.solarHarvest + metrics.gridCharge - metrics.dailyConsumption) / metrics.batteryCapacity, 0.2), 1);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
 
   return (
     <div style={{ position: 'relative' }}>
       <WireLegend />
 
-      {/* SVG Wiring Diagram with Airbnb icons */}
-      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-        <svg
-          viewBox="0 0 900 800"
-          style={{ 
-            width: '100%', 
-            minWidth: window.innerWidth < 768 ? '100%' : '720px',
-            display: 'block',
-            maxWidth: '100%'
-          }}
-          fontFamily="var(--font-mono)"
-        >
-          <defs>
-            <marker id="arr-solar" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
-              <path d="M2 2 L8 5 L2 8" fill="none" stroke="#FF9500" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </marker>
-            <marker id="arr-grid" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
-              <path d="M2 2 L8 5 L2 8" fill="none" stroke="#0A84FF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </marker>
-            <marker id="arr-batt" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
-              <path d="M2 2 L8 5 L2 8" fill="none" stroke="#BF5AF2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </marker>
-            <marker id="arr-load" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
-              <path d="M2 2 L8 5 L2 8" fill="none" stroke="#30D158" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </marker>
-          </defs>
-
-          {/* Solar Panel — Top Center */}
-          <g transform="translate(422, 60)">
-            {/* Solar panel icon - inline SVG - LARGER */}
-            <rect x="-24" y="-18" width="48" height="36" rx="2" stroke="#FF9500" strokeWidth="2.5" fill="none"/>
-            <line x1="0" y1="-18" x2="0" y2="18" stroke="#FF9500" strokeWidth="2"/>
-            <line x1="-24" y1="0" x2="24" y2="0" stroke="#FF9500" strokeWidth="2"/>
-            <line x1="-12" y1="-18" x2="-12" y2="18" stroke="#FF9500" strokeWidth="1.5"/>
-            <line x1="12" y1="-18" x2="12" y2="18" stroke="#FF9500" strokeWidth="1.5"/>
-            <line x1="-24" y1="-9" x2="24" y2="-9" stroke="#FF9500" strokeWidth="1.5"/>
-            <line x1="-24" y1="9" x2="24" y2="9" stroke="#FF9500" strokeWidth="1.5"/>
-            <text x="0" y="52" textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--text-primary)">Solar Panels</text>
-            <text x="0" y="68" textAnchor="middle" fontSize="10" fill="var(--text-secondary)">{config.panelCount} × {config.panelWatts}W</text>
-            <text x="0" y="82" textAnchor="middle" fontSize="10" fontWeight="600" fill="#FF9500">{metrics.solarHarvest.toFixed(1)} kWh/day</text>
-          </g>
-
-          {/* Line: Solar → Inverter */}
-          <line x1="450" y1="142" x2="450" y2="250" stroke="#FF9500" strokeWidth="3" markerEnd="url(#arr-solar)" />
-
-          {/* Inverter — Center */}
-          <g transform="translate(422, 300)">
-            {/* Inverter icon - inline SVG - LARGER */}
-            <rect x="-20" y="-20" width="40" height="40" rx="4" stroke="#8E8E93" strokeWidth="2.5" fill="none"/>
-            <circle cx="-8" cy="-6" r="3" fill="#8E8E93"/>
-            <circle cx="8" cy="-6" r="3" fill="#8E8E93"/>
-            <path d="M-14 6 L-6 6 L0 12 L6 0 L14 6" stroke="#8E8E93" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-            <text x="0" y="52" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--text-primary)">Inverter</text>
-            <text x="0" y="67" textAnchor="middle" fontSize="10" fill="var(--text-secondary)">{totalKVA} kVA</text>
-          </g>
-
-          {/* Grid — Left */}
+      {isMobile ? (
+        /* ── MOBILE: Vertical stack with React divs ── */
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '16px 0' }}>
+          
+          {/* Solar */}
+          <div style={{ textAlign: 'center' }}>
+            <svg width="56" height="42" viewBox="0 0 56 42">
+              <rect x="4" y="4" width="48" height="34" rx="2" stroke="#FF9500" strokeWidth="2.5" fill="none"/>
+              <line x1="20" y1="4" x2="20" y2="38" stroke="#FF9500" strokeWidth="1.5"/>
+              <line x1="36" y1="4" x2="36" y2="38" stroke="#FF9500" strokeWidth="1.5"/>
+              <line x1="4" y1="17" x2="52" y2="17" stroke="#FF9500" strokeWidth="1.5"/>
+              <line x1="4" y1="25" x2="52" y2="25" stroke="#FF9500" strokeWidth="1.5"/>
+            </svg>
+            <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '6px' }}>Solar Panels</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)' }}>{config.panelCount} × {config.panelWatts}W</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600, color: '#FF9500' }}>{metrics.solarHarvest.toFixed(1)} kWh/day</div>
+          </div>
+          
+          {/* Arrow */}
+          <svg width="24" height="36" viewBox="0 0 24 36"><line x1="12" y1="0" x2="12" y2="28" stroke="#FF9500" strokeWidth="3" strokeDasharray="6 4"/><polygon points="12,36 6,26 18,26" fill="#FF9500"/></svg>
+          
+          {/* Grid */}
           {config.gridHours > 0 && (
-            <g transform="translate(140, 300)">
-              {/* Grid icon - inline SVG - LARGER */}
-              <line x1="0" y1="-22" x2="0" y2="-12" stroke="#0A84FF" strokeWidth="2.5" strokeLinecap="round"/>
-              <line x1="0" y1="12" x2="0" y2="22" stroke="#0A84FF" strokeWidth="2.5" strokeLinecap="round"/>
-              <circle cx="0" cy="0" r="10" stroke="#0A84FF" strokeWidth="2.5" fill="none"/>
-              <path d="M-10 -17L-17 -24M17 -24L10 -17M-10 17L-17 24M17 24L10 17" stroke="#0A84FF" strokeWidth="2.5" strokeLinecap="round"/>
-              <circle cx="-17" cy="-17" r="3" fill="#0A84FF"/>
-              <circle cx="17" cy="-17" r="3" fill="#0A84FF"/>
-              <circle cx="-17" cy="17" r="3" fill="#0A84FF"/>
-              <circle cx="17" cy="17" r="3" fill="#0A84FF"/>
-              <text x="0" y="52" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--text-primary)">Grid</text>
-              <text x="0" y="67" textAnchor="middle" fontSize="10" fill="var(--text-secondary)">{config.gridHours}h/day</text>
-              <text x="0" y="80" textAnchor="middle" fontSize="9" fontWeight="600" fill="#0A84FF">{metrics.gridCharge.toFixed(1)} kWh</text>
-            </g>
+            <>
+              <div style={{ textAlign: 'center' }}>
+                <svg width="48" height="48" viewBox="0 0 48 48">
+                  <line x1="24" y1="2" x2="24" y2="12" stroke="#0A84FF" strokeWidth="2.5" strokeLinecap="round"/>
+                  <line x1="24" y1="36" x2="24" y2="46" stroke="#0A84FF" strokeWidth="2.5" strokeLinecap="round"/>
+                  <circle cx="24" cy="24" r="10" stroke="#0A84FF" strokeWidth="2.5" fill="none"/>
+                  <circle cx="10" cy="10" r="3" fill="#0A84FF"/><circle cx="38" cy="10" r="3" fill="#0A84FF"/>
+                  <circle cx="10" cy="38" r="3" fill="#0A84FF"/><circle cx="38" cy="38" r="3" fill="#0A84FF"/>
+                  <path d="M16 10L10 4M38 4L32 10M16 38L10 44M38 44L32 38" stroke="#0A84FF" strokeWidth="2.5" strokeLinecap="round"/>
+                </svg>
+                <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>Grid</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)' }}>{config.gridHours}h/day</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600, color: '#0A84FF' }}>{metrics.gridCharge.toFixed(1)} kWh</div>
+              </div>
+              <svg width="24" height="36" viewBox="0 0 24 36"><line x1="12" y1="0" x2="12" y2="28" stroke="#0A84FF" strokeWidth="3" strokeDasharray="6 4"/><polygon points="12,36 6,26 18,26" fill="#0A84FF"/></svg>
+            </>
           )}
           
-          {/* Line: Grid → Inverter */}
-          {config.gridHours > 0 && (
-            <line x1="197" y1="320" x2="362" y2="320" stroke="#0A84FF" strokeWidth="3" strokeDasharray="8 4" markerEnd="url(#arr-grid)" />
-          )}
-
-          {/* Battery — Right */}
-          <g transform="translate(704, 300)">
-            {/* Battery icon - inline SVG - LARGER */}
-            <rect x="-22" y="-17" width="44" height="34" rx="3" stroke="#BF5AF2" strokeWidth="2.5" fill="none"/>
-            <rect x="-22" y="-17" width={44 * batteryLevel} height="34" rx="3" fill="#BF5AF2" opacity="0.2"/>
-            <rect x="-3" y="-22" width="6" height="5" rx="1" fill="#BF5AF2"/>
-            <text x="0" y="5" textAnchor="middle" fontSize="12" fontWeight="700" fill="#BF5AF2">{(batteryLevel * 100).toFixed(0)}%</text>
-            <text x="0" y="52" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--text-primary)">Battery</text>
-            <text x="0" y="67" textAnchor="middle" fontSize="10" fill="var(--text-secondary)">{batteryCapacity.toFixed(1)} kWh</text>
-            <text x="0" y="80" textAnchor="middle" fontSize="9" fontWeight="600" fill="#BF5AF2">~{metrics.autonomyHours}h</text>
-          </g>
+          {/* Inverter */}
+          <div style={{ textAlign: 'center' }}>
+            <svg width="44" height="44" viewBox="0 0 44 44">
+              <rect x="2" y="2" width="40" height="40" rx="4" stroke="#8E8E93" strokeWidth="2.5" fill="none"/>
+              <circle cx="15" cy="16" r="3" fill="#8E8E93"/><circle cx="29" cy="16" r="3" fill="#8E8E93"/>
+              <path d="M8 28 L14 28 L19 34 L24 22 L29 28 L36 28" stroke="#8E8E93" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>Inverter</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)' }}>{inverter.name}</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)' }}>{totalKVA} kVA</div>
+          </div>
           
-          {/* Line: Inverter → Battery */}
-          <line x1="502" y1="320" x2="638" y2="320" stroke="#BF5AF2" strokeWidth="3" strokeDasharray="8 4" markerEnd="url(#arr-batt)" opacity={metrics.solarHarvest + metrics.gridCharge > metrics.dailyConsumption ? 1 : 0.3} />
-
-          {/* House Load — Bottom - MOVED LOWER */}
-          <g transform="translate(422, 550)">
-            {/* Home icon - inline SVG - LARGER */}
-            <path d="M-22 0L0 -20L22 0" stroke="#30D158" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-            <path d="M-18 0L-18 20L18 20L18 0" stroke="#30D158" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-            <rect x="-8" y="6" width="16" height="14" stroke="#30D158" strokeWidth="2.5" fill="none"/>
-            <text x="0" y="52" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--text-primary)">House Load</text>
-            <text x="0" y="67" textAnchor="middle" fontSize="10" fill="var(--text-secondary)">{metrics.peakLoad.toLocaleString()}W</text>
-            <text x="0" y="80" textAnchor="middle" fontSize="9" fontWeight="600" fill="#30D158">{metrics.dailyConsumption.toFixed(1)} kWh/day</text>
-          </g>
+          <svg width="24" height="36" viewBox="0 0 24 36"><line x1="12" y1="0" x2="12" y2="28" stroke="#BF5AF2" strokeWidth="3" strokeDasharray="6 4"/><polygon points="12,36 6,26 18,26" fill="#BF5AF2"/></svg>
           
-          {/* Line: Inverter → Load */}
-          <line x1="450" y1="372" x2="450" y2="490" stroke="#30D158" strokeWidth="3" markerEnd="url(#arr-load)" />
+          {/* Battery */}
+          <div style={{ textAlign: 'center' }}>
+            <svg width="52" height="40" viewBox="0 0 52 40">
+              <rect x="2" y="6" width="44" height="28" rx="3" stroke="#BF5AF2" strokeWidth="2.5" fill="none"/>
+              <rect x="2" y="6" width={44 * batteryLevel} height="28" rx="3" fill="#BF5AF2" opacity="0.2"/>
+              <rect x="46" y="14" width="4" height="12" rx="1" fill="#BF5AF2"/>
+              <text x="24" y="24" textAnchor="middle" fontSize="12" fontWeight="700" fill="#BF5AF2" fontFamily="var(--font-mono)">{(batteryLevel * 100).toFixed(0)}%</text>
+            </svg>
+            <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>Battery</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)' }}>{batteryCapacity.toFixed(1)} kWh</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600, color: '#BF5AF2' }}>~{metrics.autonomyHours}h</div>
+          </div>
+          
+          <svg width="24" height="36" viewBox="0 0 24 36"><line x1="12" y1="0" x2="12" y2="28" stroke="#30D158" strokeWidth="3"/><polygon points="12,36 6,26 18,26" fill="#30D158"/></svg>
+          
+          {/* House Load */}
+          <div style={{ textAlign: 'center' }}>
+            <svg width="48" height="48" viewBox="0 0 48 48">
+              <path d="M6 24L24 6L42 24" stroke="#30D158" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              <path d="M10 24L10 42L38 42L38 24" stroke="#30D158" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              <rect x="18" y="30" width="12" height="12" stroke="#30D158" strokeWidth="2.5" fill="none"/>
+            </svg>
+            <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>House Load</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)' }}>{metrics.peakLoad.toLocaleString()}W</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600, color: '#30D158' }}>{metrics.dailyConsumption.toFixed(1)} kWh/day</div>
+          </div>
+        </div>
+      ) : (
+        /* ── DESKTOP: Original SVG diagram ── */
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <svg viewBox="0 0 900 800" style={{ width: '100%', minWidth: '720px', display: 'block' }} fontFamily="var(--font-mono)">
+            <defs>
+              <marker id="arr-solar" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M2 2 L8 5 L2 8" fill="none" stroke="#FF9500" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></marker>
+              <marker id="arr-grid" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M2 2 L8 5 L2 8" fill="none" stroke="#0A84FF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></marker>
+              <marker id="arr-batt" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M2 2 L8 5 L2 8" fill="none" stroke="#BF5AF2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></marker>
+              <marker id="arr-load" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M2 2 L8 5 L2 8" fill="none" stroke="#30D158" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></marker>
+            </defs>
 
-          {/* Projected Battery State Box */}
-          <g transform="translate(50, 600)">
-            <rect x="0" y="0" width="220" height="130" rx="12" fill="var(--bg-card)" stroke="var(--border-moderate)" strokeWidth="1.5"/>
-            <text x="110" y="25" textAnchor="middle" fontSize="10" fontWeight="600" fill="var(--text-tertiary)" style={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Projected Battery State
-            </text>
-            
-            {/* Battery icon inline */}
-            <g transform="translate(110, 62)">
-              <rect x="-18" y="-14" width="36" height="28" rx="3" stroke="#BF5AF2" strokeWidth="2.5" fill="none"/>
-              <rect x="-18" y="-14" width={36 * batteryLevel} height="28" rx="3" fill="#BF5AF2" opacity="0.3"/>
-              <rect x="-2" y="-18" width="4" height="4" rx="1" fill="#BF5AF2"/>
+            {/* Solar — Top Center */}
+            <g transform="translate(422, 60)">
+              <rect x="-24" y="-18" width="48" height="36" rx="2" stroke="#FF9500" strokeWidth="2.5" fill="none"/>
+              <line x1="0" y1="-18" x2="0" y2="18" stroke="#FF9500" strokeWidth="2"/>
+              <line x1="-24" y1="0" x2="24" y2="0" stroke="#FF9500" strokeWidth="2"/>
+              <line x1="-12" y1="-18" x2="-12" y2="18" stroke="#FF9500" strokeWidth="1.5"/>
+              <line x1="12" y1="-18" x2="12" y2="18" stroke="#FF9500" strokeWidth="1.5"/>
+              <line x1="-24" y1="-9" x2="24" y2="-9" stroke="#FF9500" strokeWidth="1.5"/>
+              <line x1="-24" y1="9" x2="24" y2="9" stroke="#FF9500" strokeWidth="1.5"/>
+              <text x="0" y="52" textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--text-primary)">Solar Panels</text>
+              <text x="0" y="68" textAnchor="middle" fontSize="10" fill="var(--text-secondary)">{config.panelCount} × {config.panelWatts}W</text>
+              <text x="0" y="82" textAnchor="middle" fontSize="10" fontWeight="600" fill="#FF9500">{metrics.solarHarvest.toFixed(1)} kWh/day</text>
             </g>
-            
-            <text x="110" y="110" textAnchor="middle" fontSize="20" fontWeight="700" fill="#BF5AF2">
-              {(batteryLevel * 100).toFixed(0)}%
-            </text>
-            <text x="110" y="125" textAnchor="middle" fontSize="10" fill="var(--text-tertiary)">
-              {batteryLevel > 0.8 ? 'Full charge' : batteryLevel > 0.5 ? 'Healthy' : batteryLevel > 0.3 ? 'Needs charging' : 'Critical'}
-            </text>
-          </g>
-        </svg>
-      </div>
+            <line x1="450" y1="142" x2="450" y2="250" stroke="#FF9500" strokeWidth="3" markerEnd="url(#arr-solar)" />
+
+            {/* Inverter — Center */}
+            <g transform="translate(422, 300)">
+              <rect x="-20" y="-20" width="40" height="40" rx="4" stroke="#8E8E93" strokeWidth="2.5" fill="none"/>
+              <circle cx="-8" cy="-6" r="3" fill="#8E8E93"/><circle cx="8" cy="-6" r="3" fill="#8E8E93"/>
+              <path d="M-14 6 L-6 6 L0 12 L6 0 L14 6" stroke="#8E8E93" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+              <text x="0" y="52" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--text-primary)">Inverter</text>
+              <text x="0" y="67" textAnchor="middle" fontSize="10" fill="var(--text-secondary)">{totalKVA} kVA</text>
+            </g>
+
+            {/* Grid — Left */}
+            {config.gridHours > 0 && (
+              <g transform="translate(140, 300)">
+                <line x1="0" y1="-22" x2="0" y2="-12" stroke="#0A84FF" strokeWidth="2.5" strokeLinecap="round"/>
+                <line x1="0" y1="12" x2="0" y2="22" stroke="#0A84FF" strokeWidth="2.5" strokeLinecap="round"/>
+                <circle cx="0" cy="0" r="10" stroke="#0A84FF" strokeWidth="2.5" fill="none"/>
+                <path d="M-10 -17L-17 -24M17 -24L10 -17M-10 17L-17 24M17 24L10 17" stroke="#0A84FF" strokeWidth="2.5" strokeLinecap="round"/>
+                <circle cx="-17" cy="-17" r="3" fill="#0A84FF"/><circle cx="17" cy="-17" r="3" fill="#0A84FF"/>
+                <circle cx="-17" cy="17" r="3" fill="#0A84FF"/><circle cx="17" cy="17" r="3" fill="#0A84FF"/>
+                <text x="0" y="52" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--text-primary)">Grid</text>
+                <text x="0" y="67" textAnchor="middle" fontSize="10" fill="var(--text-secondary)">{config.gridHours}h/day</text>
+                <text x="0" y="80" textAnchor="middle" fontSize="9" fontWeight="600" fill="#0A84FF">{metrics.gridCharge.toFixed(1)} kWh</text>
+              </g>
+            )}
+            {config.gridHours > 0 && <line x1="197" y1="320" x2="362" y2="320" stroke="#0A84FF" strokeWidth="3" strokeDasharray="8 4" markerEnd="url(#arr-grid)" />}
+
+            {/* Battery — Right */}
+            <g transform="translate(704, 300)">
+              <rect x="-22" y="-17" width="44" height="34" rx="3" stroke="#BF5AF2" strokeWidth="2.5" fill="none"/>
+              <rect x="-22" y="-17" width={44 * batteryLevel} height="34" rx="3" fill="#BF5AF2" opacity="0.2"/>
+              <rect x="-3" y="-22" width="6" height="5" rx="1" fill="#BF5AF2"/>
+              <text x="0" y="5" textAnchor="middle" fontSize="12" fontWeight="700" fill="#BF5AF2">{(batteryLevel * 100).toFixed(0)}%</text>
+              <text x="0" y="52" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--text-primary)">Battery</text>
+              <text x="0" y="67" textAnchor="middle" fontSize="10" fill="var(--text-secondary)">{batteryCapacity.toFixed(1)} kWh</text>
+              <text x="0" y="80" textAnchor="middle" fontSize="9" fontWeight="600" fill="#BF5AF2">~{metrics.autonomyHours}h</text>
+            </g>
+            <line x1="502" y1="320" x2="638" y2="320" stroke="#BF5AF2" strokeWidth="3" strokeDasharray="8 4" markerEnd="url(#arr-batt)" opacity={metrics.solarHarvest + metrics.gridCharge > metrics.dailyConsumption ? 1 : 0.3} />
+
+            {/* House Load — Bottom */}
+            <g transform="translate(422, 550)">
+              <path d="M-22 0L0 -20L22 0" stroke="#30D158" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              <path d="M-18 0L-18 20L18 20L18 0" stroke="#30D158" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              <rect x="-8" y="6" width="16" height="14" stroke="#30D158" strokeWidth="2.5" fill="none"/>
+              <text x="0" y="52" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--text-primary)">House Load</text>
+              <text x="0" y="67" textAnchor="middle" fontSize="10" fill="var(--text-secondary)">{metrics.peakLoad.toLocaleString()}W</text>
+              <text x="0" y="80" textAnchor="middle" fontSize="9" fontWeight="600" fill="#30D158">{metrics.dailyConsumption.toFixed(1)} kWh/day</text>
+            </g>
+            <line x1="450" y1="372" x2="450" y2="490" stroke="#30D158" strokeWidth="3" markerEnd="url(#arr-load)" />
+
+            {/* Projected Battery State Box */}
+            <g transform="translate(50, 600)">
+              <rect x="0" y="0" width="220" height="130" rx="12" fill="var(--bg-card)" stroke="var(--border-moderate)" strokeWidth="1.5"/>
+              <text x="110" y="25" textAnchor="middle" fontSize="10" fontWeight="600" fill="var(--text-tertiary)" style={{ textTransform: 'uppercase', letterSpacing: '1px' }}>Projected Battery State</text>
+              <g transform="translate(110, 62)">
+                <rect x="-18" y="-14" width="36" height="28" rx="3" stroke="#BF5AF2" strokeWidth="2.5" fill="none"/>
+                <rect x="-18" y="-14" width={36 * batteryLevel} height="28" rx="3" fill="#BF5AF2" opacity="0.3"/>
+                <rect x="-2" y="-18" width="4" height="4" rx="1" fill="#BF5AF2"/>
+              </g>
+              <text x="110" y="110" textAnchor="middle" fontSize="20" fontWeight="700" fill="#BF5AF2">{(batteryLevel * 100).toFixed(0)}%</text>
+              <text x="110" y="125" textAnchor="middle" fontSize="10" fill="var(--text-tertiary)">{batteryLevel > 0.8 ? 'Full charge' : batteryLevel > 0.5 ? 'Healthy' : batteryLevel > 0.3 ? 'Needs charging' : 'Critical'}</text>
+            </g>
+          </svg>
+        </div>
+      )}
 
       {/* Component spec annotation cards row */}
       <SystemComponentCards config={config} metrics={metrics} />

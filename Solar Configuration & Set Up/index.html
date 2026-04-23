@@ -2651,7 +2651,7 @@ function StaticDiagram({ config, metrics }) {
 
       {isMobile ? (
         /* ── MOBILE: Vertical stack with React divs ── */
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '16px 0' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '24px 0 16px' }}>
           
           {/* Solar */}
           <div style={{ textAlign: 'center' }}>
@@ -2662,13 +2662,13 @@ function StaticDiagram({ config, metrics }) {
               <line x1="4" y1="17" x2="52" y2="17" stroke="#FF9500" strokeWidth="1.5"/>
               <line x1="4" y1="25" x2="52" y2="25" stroke="#FF9500" strokeWidth="1.5"/>
             </svg>
-            <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '6px' }}>Solar Panels</div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)' }}>{config.panelCount} × {config.panelWatts}W</div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600, color: '#FF9500' }}>{metrics.solarHarvest.toFixed(1)} kWh/day</div>
+            <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '12px' }}>Solar Panels</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>{config.panelCount} × {config.panelWatts}W</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600, color: '#FF9500', marginTop: '2px' }}>{metrics.solarHarvest.toFixed(1)} kWh/day</div>
           </div>
           
           {/* Arrow */}
-          <svg width="24" height="36" viewBox="0 0 24 36"><line x1="12" y1="0" x2="12" y2="28" stroke="#FF9500" strokeWidth="3" strokeDasharray="6 4"/><polygon points="12,36 6,26 18,26" fill="#FF9500"/></svg>
+          <svg width="24" height="40" viewBox="0 0 24 40"><line x1="12" y1="0" x2="12" y2="32" stroke="#FF9500" strokeWidth="3" strokeDasharray="6 4"/><polygon points="12,40 6,30 18,30" fill="#FF9500"/></svg>
           
           {/* Grid */}
           {config.gridHours > 0 && (
@@ -2682,11 +2682,11 @@ function StaticDiagram({ config, metrics }) {
                   <circle cx="10" cy="38" r="3" fill="#0A84FF"/><circle cx="38" cy="38" r="3" fill="#0A84FF"/>
                   <path d="M16 10L10 4M38 4L32 10M16 38L10 44M38 44L32 38" stroke="#0A84FF" strokeWidth="2.5" strokeLinecap="round"/>
                 </svg>
-                <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>Grid</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)' }}>{config.gridHours}h/day</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600, color: '#0A84FF' }}>{metrics.gridCharge.toFixed(1)} kWh</div>
+                <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '12px' }}>Grid</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>{config.gridHours}h/day</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600, color: '#0A84FF', marginTop: '2px' }}>{metrics.gridCharge.toFixed(1)} kWh</div>
               </div>
-              <svg width="24" height="36" viewBox="0 0 24 36"><line x1="12" y1="0" x2="12" y2="28" stroke="#0A84FF" strokeWidth="3" strokeDasharray="6 4"/><polygon points="12,36 6,26 18,26" fill="#0A84FF"/></svg>
+              <svg width="24" height="40" viewBox="0 0 24 40"><line x1="12" y1="0" x2="12" y2="32" stroke="#0A84FF" strokeWidth="3" strokeDasharray="6 4"/><polygon points="12,40 6,30 18,30" fill="#0A84FF"/></svg>
             </>
           )}
           
@@ -2697,12 +2697,12 @@ function StaticDiagram({ config, metrics }) {
               <circle cx="15" cy="16" r="3" fill="#8E8E93"/><circle cx="29" cy="16" r="3" fill="#8E8E93"/>
               <path d="M8 28 L14 28 L19 34 L24 22 L29 28 L36 28" stroke="#8E8E93" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>Inverter</div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)' }}>{inverter.name}</div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)' }}>{totalKVA} kVA</div>
+            <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '12px' }}>Inverter</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-secondary)', marginTop: '4px' }}>{inverter.name}</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>{totalKVA} kVA</div>
           </div>
           
-          <svg width="24" height="36" viewBox="0 0 24 36"><line x1="12" y1="0" x2="12" y2="28" stroke="#BF5AF2" strokeWidth="3" strokeDasharray="6 4"/><polygon points="12,36 6,26 18,26" fill="#BF5AF2"/></svg>
+          <svg width="24" height="40" viewBox="0 0 24 40"><line x1="12" y1="0" x2="12" y2="32" stroke="#BF5AF2" strokeWidth="3" strokeDasharray="6 4"/><polygon points="12,40 6,30 18,30" fill="#BF5AF2"/></svg>
           
           {/* Battery */}
           <div style={{ textAlign: 'center' }}>
@@ -2712,12 +2712,12 @@ function StaticDiagram({ config, metrics }) {
               <rect x="46" y="14" width="4" height="12" rx="1" fill="#BF5AF2"/>
               <text x="24" y="24" textAnchor="middle" fontSize="12" fontWeight="700" fill="#BF5AF2" fontFamily="var(--font-mono)">{(batteryLevel * 100).toFixed(0)}%</text>
             </svg>
-            <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>Battery</div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)' }}>{batteryCapacity.toFixed(1)} kWh</div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600, color: '#BF5AF2' }}>~{metrics.autonomyHours}h</div>
+            <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '12px' }}>Battery</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>{batteryCapacity.toFixed(1)} kWh</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600, color: '#BF5AF2', marginTop: '2px' }}>~{metrics.autonomyHours}h</div>
           </div>
           
-          <svg width="24" height="36" viewBox="0 0 24 36"><line x1="12" y1="0" x2="12" y2="28" stroke="#30D158" strokeWidth="3"/><polygon points="12,36 6,26 18,26" fill="#30D158"/></svg>
+          <svg width="24" height="40" viewBox="0 0 24 40"><line x1="12" y1="0" x2="12" y2="32" stroke="#30D158" strokeWidth="3"/><polygon points="12,40 6,30 18,30" fill="#30D158"/></svg>
           
           {/* House Load */}
           <div style={{ textAlign: 'center' }}>
@@ -2726,9 +2726,9 @@ function StaticDiagram({ config, metrics }) {
               <path d="M10 24L10 42L38 42L38 24" stroke="#30D158" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
               <rect x="18" y="30" width="12" height="12" stroke="#30D158" strokeWidth="2.5" fill="none"/>
             </svg>
-            <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '4px' }}>House Load</div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)' }}>{metrics.peakLoad.toLocaleString()}W</div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600, color: '#30D158' }}>{metrics.dailyConsumption.toFixed(1)} kWh/day</div>
+            <div style={{ fontWeight: 700, fontSize: '14px', marginTop: '12px' }}>House Load</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>{metrics.peakLoad.toLocaleString()}W</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600, color: '#30D158', marginTop: '2px' }}>{metrics.dailyConsumption.toFixed(1)} kWh/day</div>
           </div>
         </div>
       ) : (

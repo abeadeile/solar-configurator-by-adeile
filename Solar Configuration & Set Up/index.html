@@ -874,6 +874,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   border-color: var(--border-strong);
 }
 </style>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='35' fill='%23FF9500'/><g stroke='%23FF9500' stroke-width='8' stroke-linecap='round'><line x1='50' y1='2' x2='50' y2='18'/><line x1='50' y1='82' x2='50' y2='98'/><line x1='2' y1='50' x2='18' y2='50'/><line x1='82' y1='50' x2='98' y2='50'/><line x1='15' y1='15' x2='27' y2='27'/><line x1='73' y1='73' x2='85' y2='85'/><line x1='85' y1='15' x2='73' y2='27'/><line x1='27' y1='73' x2='15' y1='85'/></g></svg>">
 </head>
 <body>
 <div id="root"></div>
@@ -1697,7 +1698,7 @@ function drawDiagram(ctx, width, height, time, config, metrics) {
   const flowPhase = (time % 2) / 2;
   
   // Solar to Inverter - arrow points TO inverter icon, ends BEFORE label text
-  drawAnimatedLine(ctx, solarX, solarY + 50, inverterX, inverterY - 50, '#FF9500', flowPhase, metrics.solarHarvest > 0);
+  drawAnimatedLine(ctx, solarX, solarY + 50, inverterX, inverterY - 50, '#FF9500', flowPhase, metrics.solarHarvest > 0, true);
   
   // Grid to Inverter - arrow points TO inverter icon
   if (config.gridHours > 0) {
@@ -1708,10 +1709,10 @@ function drawDiagram(ctx, width, height, time, config, metrics) {
   drawAnimatedLine(ctx, inverterX + 55, inverterY, batteryX - 40, batteryY, '#BF5AF2', flowPhase, metrics.batteryCharge > 0, true);
   
   // Inverter to Load - arrow points TO load icon, ends BEFORE label text
-  drawAnimatedLine(ctx, inverterX, inverterY + 50, loadX, loadY - 50, '#30D158', flowPhase, true);
+  drawAnimatedLine(ctx, inverterX, inverterY + 50, loadX, loadY - 50, '#30D158', flowPhase, true, true);
   
   // Draw component icons with labels
-  const batteryLevel = Math.min(1, Math.max(0, (metrics.solarHarvest + metrics.gridCharge - metrics.dailyConsumption) / metrics.dailyConsumption));
+  const batteryLevel = metrics.usableCapacity > 0 ? Math.min(1, metrics.usableCapacity / metrics.batteryCapacity) : 0;
   
   drawSolarPanelIcon(ctx, solarX, solarY, isDark);
   drawComponentLabel(ctx, solarX, solarY + 50, 'Solar Panels', `${config.panelCount} × ${config.panelWatts}W`, `${metrics.solarHarvest.toFixed(1)} kWh/day`, '#FF9500', isDark);
@@ -1930,6 +1931,12 @@ function drawLoadIcon(ctx, x, y, isDark) {
 }
 
 function drawComponentLabel(ctx, x, y, title, subtitle, detail, color, isDark) {
+  // Draw fully opaque background box to hide lines completely
+  ctx.fillStyle = isDark ? 'rgba(25, 25, 35, 0.05)' : 'rgba(245, 245, 250, 0.05)';
+  ctx.beginPath();
+  ctx.roundRect(x - 55, y - 5, 110, 50, 8);
+  ctx.fill();
+  
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   
@@ -3065,6 +3072,7 @@ function WeatherDashboard({ config, metrics }) {
   const [cityInput, setCityInput] = useState('Lagos, Nigeria');
   const [coords, setCoords]       = useState({ lat: 6.5244, lon: 3.3792, name: 'Lagos, Nigeria' });
   const [searching, setSearching] = useState(false);
+  const [showLegend, setShowLegend] = useState(false);
 
   const fetchWeather = async (lat, lon) => {
     setLoading(true); setError(null);
@@ -3143,7 +3151,29 @@ function WeatherDashboard({ config, metrics }) {
     <section className="section animate-in">
       <div className="section-header">
         <div className="section-label">Weather Dashboard</div>
-        <div className="section-title">14-Day Solar Forecast</div>
+        <div style={{ display:'flex', alignItems:'center', gap:'16px' }}>
+          <div className="section-title">14-Day Solar Forecast</div>
+          <button
+            onClick={() => setShowLegend(!showLegend)}
+            style={{
+              background:'none',
+              border:'none',
+              fontSize:'20px',
+              cursor:'pointer',
+              color:'var(--text-secondary)',
+              padding:'4px',
+              display:'flex',
+              alignItems:'center',
+              justifyContent:'center',
+              transition:'color 0.2s ease',
+            }}
+            onMouseEnter={e => e.target.style.color = 'var(--text-primary)'}
+            onMouseLeave={e => e.target.style.color = 'var(--text-secondary)'}
+            title="Show metric explanations"
+          >
+            ⚙️
+          </button>
+        </div>
       </div>
 
       {/* Location bar */}
@@ -3166,6 +3196,53 @@ function WeatherDashboard({ config, metrics }) {
         }}>{searching ? '...' : 'Search'}</button>
         <span style={{ ...labelStyle, whiteSpace:'nowrap' }}>📍 {coords.name}</span>
       </div>
+
+      {/* Collapsible Legend Panel */}
+      {showLegend && (
+        <div style={{
+          background:'var(--bg-elevated)',
+          border:'1px solid var(--border-subtle)',
+          borderRadius:'12px',
+          padding:'20px',
+          marginBottom:'20px',
+          animation:'slideDown 0.3s ease-out'
+        }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'16px' }}>
+            <div>
+              <div style={{ ...labelStyle, marginBottom:'6px' }}>Temperature Range</div>
+              <div style={{ fontSize:'13px', color:'var(--text-secondary)', lineHeight:'1.5' }}>Max/min daily temperature in Celsius. Helps assess weather impact on system performance.</div>
+            </div>
+            <div>
+              <div style={{ ...labelStyle, marginBottom:'6px' }}>Rainfall (💧)</div>
+              <div style={{ fontSize:'13px', color:'var(--text-secondary)', lineHeight:'1.5' }}>Daily precipitation in millimeters. Higher rainfall may reduce solar generation.</div>
+            </div>
+            <div>
+              <div style={{ ...labelStyle, marginBottom:'6px' }}>Solar Hours (☀️)</div>
+              <div style={{ fontSize:'13px', color:'var(--text-secondary)', lineHeight:'1.5' }}>Peak sun hours — effective daylight for generation. Direct measure of solar strength.</div>
+            </div>
+            <div>
+              <div style={{ ...labelStyle, marginBottom:'6px' }}>Solar Harvest (↑)</div>
+              <div style={{ fontSize:'13px', color:'var(--text-secondary)', lineHeight:'1.5' }}>kWh generated by your panels today. Depends on panel size, count, and solar hours.</div>
+            </div>
+            <div>
+              <div style={{ ...labelStyle, marginBottom:'6px' }}>Consumption (↓)</div>
+              <div style={{ fontSize:'13px', color:'var(--text-secondary)', lineHeight:'1.5' }}>kWh consumed by your loads today. Standard estimate based on your appliance profile.</div>
+            </div>
+            <div>
+              <div style={{ ...labelStyle, marginBottom:'6px' }}>Net Balance</div>
+              <div style={{ fontSize:'13px', color:'var(--text-secondary)', lineHeight:'1.5' }}>Harvest minus consumption. Positive = surplus to battery. Negative = grid import needed.</div>
+            </div>
+            <div>
+              <div style={{ ...labelStyle, marginBottom:'6px' }}>Overnight (h)</div>
+              <div style={{ fontSize:'13px', color:'var(--text-secondary)', lineHeight:'1.5' }}>Hours battery can power typical overnight load. Based on dawn charge level.</div>
+            </div>
+            <div>
+              <div style={{ ...labelStyle, marginBottom:'6px' }}>End-of-Day (%)</div>
+              <div style={{ fontSize:'13px', color:'var(--text-secondary)', lineHeight:'1.5' }}>Projected battery charge at dusk. Shows if surplus is stored or if charging deficit occurs.</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading && (
         <div style={{ textAlign:'center', padding:'60px', color:'var(--text-tertiary)', fontFamily:'var(--font-mono)' }}>
@@ -3331,6 +3408,10 @@ function WeatherDashboard({ config, metrics }) {
 
           {/* Responsive weather grid CSS injected */}
           <style>{`
+            @keyframes slideDown {
+              from { opacity: 0; transform: translateY(-12px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
             @media (max-width: 900px) {
               .weather-grid { grid-template-columns: repeat(4, minmax(0,1fr)) !important; }
             }

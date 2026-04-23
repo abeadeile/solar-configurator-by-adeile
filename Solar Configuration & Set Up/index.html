@@ -894,10 +894,21 @@ const INVERTERS = [
   { name: 'Growatt SPF3000ES', kva: 3, maxPV: 3000, maxVoc: 450, batteryV: 48, brand: 'Growatt', chargeRate: 1.5, cost: 280000 },
   { name: 'Growatt SPF5000ES', kva: 5, maxPV: 4500, maxVoc: 500, batteryV: 48, brand: 'Growatt', chargeRate: 2.5, cost: 420000 },
   { name: 'Growatt SPF6000ES', kva: 6, maxPV: 6000, maxVoc: 500, batteryV: 48, brand: 'Growatt', chargeRate: 3.0, cost: 520000 },
+  { name: 'Deye SUN-3.6K', kva: 3.6, maxPV: 3600, maxVoc: 450, batteryV: 48, brand: 'Deye', chargeRate: 1.8, cost: 320000 },
   { name: 'Deye SUN-5K-SG04LP1', kva: 5, maxPV: 5500, maxVoc: 500, batteryV: 48, brand: 'Deye', chargeRate: 2.5, cost: 450000 },
+  { name: 'Deye SUN-6K', kva: 6, maxPV: 6000, maxVoc: 500, batteryV: 48, brand: 'Deye', chargeRate: 3.0, cost: 520000 },
   { name: 'Deye SUN-8K-SG01LP1', kva: 8, maxPV: 8000, maxVoc: 500, batteryV: 48, brand: 'Deye', chargeRate: 4.0, cost: 680000 },
+  { name: 'Deye SUN-10K', kva: 10, maxPV: 10000, maxVoc: 600, batteryV: 48, brand: 'Deye', chargeRate: 5.0, cost: 820000 },
   { name: 'SunSynk 5kW Hybrid', kva: 5, maxPV: 6500, maxVoc: 500, batteryV: 48, brand: 'SunSynk', chargeRate: 2.5, cost: 480000 },
-  { name: 'SunSynk 8kW Hybrid', kva: 8, maxPV: 10400, maxVoc: 500, batteryV: 48, brand: 'SunSynk', chargeRate: 4.0, cost: 720000 }
+  { name: 'SunSynk 8kW Hybrid', kva: 8, maxPV: 10400, maxVoc: 500, batteryV: 48, brand: 'SunSynk', chargeRate: 4.0, cost: 720000 },
+  { name: 'SunSynk 10kW Hybrid', kva: 10, maxPV: 13000, maxVoc: 600, batteryV: 48, brand: 'SunSynk', chargeRate: 5.0, cost: 890000 },
+  { name: 'Victron MultiPlus 48/3000', kva: 3, maxPV: 2500, maxVoc: 450, batteryV: 48, brand: 'Victron', chargeRate: 1.5, cost: 390000 },
+  { name: 'Victron MultiPlus 48/5000', kva: 5, maxPV: 4500, maxVoc: 500, batteryV: 48, brand: 'Victron', chargeRate: 2.5, cost: 580000 },
+  { name: 'Mecer 5kW Hybrid', kva: 5, maxPV: 6000, maxVoc: 500, batteryV: 48, brand: 'Mecer', chargeRate: 2.5, cost: 420000 },
+  { name: 'Mecer 8kW Hybrid', kva: 8, maxPV: 9600, maxVoc: 500, batteryV: 48, brand: 'Mecer', chargeRate: 4.0, cost: 680000 },
+  { name: 'Lux 3.7kW', kva: 3.7, maxPV: 4000, maxVoc: 450, batteryV: 48, brand: 'Lux', chargeRate: 1.8, cost: 340000 },
+  { name: 'Lux 5.0kW', kva: 5, maxPV: 5500, maxVoc: 500, batteryV: 48, brand: 'Lux', chargeRate: 2.5, cost: 480000 },
+  { name: 'InfiniSolar 5.0K', kva: 5, maxPV: 6000, maxVoc: 500, batteryV: 48, brand: 'InfiniSolar', chargeRate: 2.5, cost: 450000 }
 ];
 
 const BATTERY_CATALOG = [
@@ -910,6 +921,7 @@ const BATTERY_CATALOG = [
   { id:'growatt-8', brand:'Growatt',        model:'ARK 7.6H-A1',      kwh:7.6,   voltage:48,   ah:158, chemistry:'LiFePO4', cycles:6000, dod:95, maxChargeA:100, cost:480000 },
   { id:'growatt-10',brand:'Growatt',        model:'ARK 10H-A1',       kwh:10,    voltage:48,   ah:208, chemistry:'LiFePO4', cycles:6000, dod:95, maxChargeA:100, cost:600000 },
   { id:'growatt-11',brand:'Growatt',        model:'ARK 11.5H-A1',     kwh:11.5,  voltage:48,   ah:240, chemistry:'LiFePO4', cycles:6000, dod:95, maxChargeA:100, cost:700000 },
+  { id:'growatt-13',brand:'Growatt',        model:'ARK 13H-A1',       kwh:13,    voltage:48,   ah:270, chemistry:'LiFePO4', cycles:6000, dod:95, maxChargeA:120, cost:800000 },
   // Blue Carbon
   { id:'bc-5',      brand:'Blue Carbon',   model:'BCT 5.0K-LT',      kwh:5,     voltage:48,   ah:104, chemistry:'LiFePO4', cycles:4000, dod:80, maxChargeA:50,  cost:280000 },
   { id:'bc-8',      brand:'Blue Carbon',   model:'BCT 8.0K-LT',      kwh:8,     voltage:48,   ah:166, chemistry:'LiFePO4', cycles:4000, dod:80, maxChargeA:80,  cost:420000 },
@@ -929,6 +941,16 @@ const BATTERY_CATALOG = [
   // Pylontech
   { id:'pylon-5',   brand:'Pylontech',     model:'US5000 (4.8kWh)',   kwh:4.8,   voltage:48,   ah:100, chemistry:'LiFePO4', cycles:6000, dod:90, maxChargeA:50,  cost:310000 },
   { id:'pylon-10',  brand:'Pylontech',     model:'US5000 x2 (9.6kWh)',kwh:9.6,   voltage:48,   ah:200, chemistry:'LiFePO4', cycles:6000, dod:90, maxChargeA:100, cost:600000 },
+  { id:'pylon-15',  brand:'Pylontech',     model:'US5000 x3 (14.4kWh)',kwh:14.4,  voltage:48,   ah:300, chemistry:'LiFePO4', cycles:6000, dod:90, maxChargeA:150, cost:890000 },
+  // Victron
+  { id:'victron-3', brand:'Victron',       model:'Lifepo4 Smart 48/50',kwh:2.56, voltage:48,   ah:50,  chemistry:'LiFePO4', cycles:5000, dod:95, maxChargeA:50,  cost:380000 },
+  { id:'victron-5', brand:'Victron',       model:'Lifepo4 Smart 48/100',kwh:5.12, voltage:48,  ah:100, chemistry:'LiFePO4', cycles:5000, dod:95, maxChargeA:100, cost:680000 },
+  // BYD
+  { id:'byd-4.8',   brand:'BYD',           model:'LVS4.8-M',         kwh:4.8,   voltage:48,   ah:100, chemistry:'LFP', cycles:6000, dod:90, maxChargeA:100, cost:320000 },
+  { id:'byd-9.6',   brand:'BYD',           model:'LVS9.6-M',         kwh:9.6,   voltage:48,   ah:200, chemistry:'LFP', cycles:6000, dod:90, maxChargeA:200, cost:620000 },
+  // SimpliPhi
+  { id:'simpli-3.8',brand:'SimpliPhi',     model:'PHI 3.8',          kwh:3.84,  voltage:48,   ah:80,  chemistry:'LiFePO4', cycles:7000, dod:90, maxChargeA:80,  cost:420000 },
+  { id:'simpli-7.6',brand:'SimpliPhi',     model:'PHI 7.6',          kwh:7.68,  voltage:48,   ah:160, chemistry:'LiFePO4', cycles:7000, dod:90, maxChargeA:160, cost:780000 }
 ];
 
 // Helper: get selected battery object
